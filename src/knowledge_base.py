@@ -344,8 +344,14 @@ class KnowledgeBase:
 
         rules_directory = self.base_path / "rules"
         rules_by_category: dict[str, list[KnowledgeBaseRule]] = {}
+        seen_rule_ids: set[str] = set()
+        loaded_files: set[str] = set()
 
         for category, file_name in RULE_FILES.items():
+            if file_name in loaded_files:
+                continue
+            loaded_files.add(file_name)
+
             file_path = rules_directory / file_name
             data = self._read_json(file_path)
             if not isinstance(data, list) or not data:
@@ -354,6 +360,11 @@ class KnowledgeBase:
             for index, item in enumerate(data):
                 context = f"{file_path.name}[{index}]"
                 rule = self._parse_rule(item, context)
+                if rule.rule_id in seen_rule_ids:
+                    raise KnowledgeBaseValidationError(
+                        f"Duplicate rule_id detected: {rule.rule_id} in {file_path.name}."
+                    )
+                seen_rule_ids.add(rule.rule_id)
                 rules_by_category.setdefault(rule.category, []).append(rule)
 
         if "dimensionality_reduction" not in rules_by_category:

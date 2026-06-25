@@ -473,7 +473,7 @@ def test_knowledge_base_loads_successfully(tmp_path: Path) -> None:
     assert isinstance(loaded, KnowledgeBaseData)
     assert isinstance(knowledge_base.get_metadata(), KnowledgeBaseMetadata)
     assert len(knowledge_base.get_pipeline_archetypes()) == 1
-    assert len(knowledge_base.get_rules()) == 11
+    assert len(knowledge_base.get_rules()) == 10
     assert len(knowledge_base.get_rules("imputation")) == 1
 
 
@@ -575,6 +575,63 @@ def test_load_raises_for_invalid_rule_schema(tmp_path: Path) -> None:
                 "notes": None,
             }
         ],
+    )
+
+    knowledge_base = KnowledgeBase(base_path)
+
+    with pytest.raises(KnowledgeBaseValidationError):
+        knowledge_base.load()
+
+
+def test_load_raises_for_duplicate_rule_ids(tmp_path: Path) -> None:
+    """Duplicate rule IDs across files should fail validation."""
+
+    base_path = tmp_path / "knowledge_base"
+    _write_valid_knowledge_base(base_path)
+    _write_json(
+        base_path / "rules" / "encoding_rules.json",
+        [
+            {
+                "rule_id": "IMP-A-001",
+                "category": "encoding",
+                "name": "Duplicate rule id",
+                "applies_to_task": ["classification"],
+                "conditions": [
+                    {
+                        "field": "categorical_columns.count",
+                        "operator": ">",
+                        "value": 0,
+                        "description": "Duplicate id.",
+                    }
+                ],
+                "evidence_fields": ["categorical_columns"],
+                "recommendation": "Use one-hot encoding.",
+                "reason_template": "Duplicate rule id.",
+                "pipeline_tags": ["encoding"],
+                "confidence_weight": 0.9,
+                "severity": "high",
+                "priority": 1,
+                "advantages": ["A"],
+                "limitations": ["B"],
+                "notes": None,
+            }
+        ],
+    )
+
+    knowledge_base = KnowledgeBase(base_path)
+
+    with pytest.raises(KnowledgeBaseValidationError):
+        knowledge_base.load()
+
+
+def test_load_raises_for_invalid_json_syntax(tmp_path: Path) -> None:
+    """Malformed JSON should fail validation."""
+
+    base_path = tmp_path / "knowledge_base"
+    _write_valid_knowledge_base(base_path)
+    (base_path / "rules" / "encoding_rules.json").write_text(
+        "[{\"rule_id\": \"ENC-A-001\", \"category\": \"encoding\"",
+        encoding="utf-8",
     )
 
     knowledge_base = KnowledgeBase(base_path)

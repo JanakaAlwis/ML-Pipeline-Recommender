@@ -64,11 +64,5 @@
     "name": "Cross Validation",
     "description": "Rules for recommending cross-validation and baseline comparison.",
     "task_scope": ["classification", "regression"]
-  },
-  {
-    "category_id": "baseline_comparison",
-    "name": "Baseline Comparison",
-    "description": "A conceptual category for comparing recommended pipelines against a simple baseline.",
-    "task_scope": ["classification", "regression"]
   }
 ]
