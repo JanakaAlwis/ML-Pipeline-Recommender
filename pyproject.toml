@@ -1,0 +1,18 @@
+[project]
+name = "ml-pipeline-recommender"
+version = "0.1.0"
+description = "Bachelor thesis project for an explainable machine learning pipeline recommendation system for tabular datasets."
+requires-python = ">=3.12"
+authors = [
+    { name = "Janaka Alwis" }
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.black]
+line-length = 88
+
+[tool.ruff]
+line-length = 88
