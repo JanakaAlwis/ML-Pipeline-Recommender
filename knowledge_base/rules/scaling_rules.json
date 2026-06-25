@@ -1,0 +1,50 @@
+[
+  {
+    "rule_id": "SCL-A-001",
+    "category": "scaling",
+    "name": "Scale features for linear and distance-based models",
+    "applies_to_task": ["classification", "regression"],
+    "conditions": [
+      {
+        "field": "numeric_columns.count",
+        "operator": ">",
+        "value": 0,
+        "description": "The dataset has numeric features."
+      }
+    ],
+    "evidence_fields": ["numeric_columns", "task_type"],
+    "recommendation": "Use standard scaling when the selected model family benefits from comparable feature scales.",
+    "reason_template": "Numeric features are present, and scaling helps linear and distance-based models perform consistently.",
+    "pipeline_tags": ["scaling", "standard_scaler"],
+    "confidence_weight": 0.88,
+    "severity": "medium",
+    "priority": 2,
+    "advantages": ["Improves comparability of features", "Helps linear models and KNN/SVM"],
+    "limitations": ["Less important for many tree-based models"],
+    "notes": null
+  },
+  {
+    "rule_id": "SCL-A-002",
+    "category": "scaling",
+    "name": "Keep scaling optional for tree-based pipelines",
+    "applies_to_task": ["classification", "regression"],
+    "conditions": [
+      {
+        "field": "preferred_model_family",
+        "operator": "in",
+        "value": ["decision_tree", "random_forest", "decision_tree_regressor", "random_forest_regressor"],
+        "description": "The recommended model family is tree-based."
+      }
+    ],
+    "evidence_fields": ["task_type", "numeric_columns", "categorical_columns"],
+    "recommendation": "Treat scaling as optional for tree-based models.",
+    "reason_template": "Tree-based models are usually less sensitive to feature scaling, so scaling can remain optional.",
+    "pipeline_tags": ["scaling", "tree_based"],
+    "confidence_weight": 0.78,
+    "severity": "low",
+    "priority": 3,
+    "advantages": ["Keeps the pipeline simpler", "Avoids unnecessary preprocessing"],
+    "limitations": ["Not ideal if a later model choice changes to a scale-sensitive model"],
+    "notes": null
+  }
+]

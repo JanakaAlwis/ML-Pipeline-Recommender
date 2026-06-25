@@ -1,0 +1,50 @@
+[
+  {
+    "rule_id": "CV-A-001",
+    "category": "cross_validation",
+    "name": "Recommend cross-validation for general model comparison",
+    "applies_to_task": ["classification", "regression"],
+    "conditions": [
+      {
+        "field": "row_count",
+        "operator": ">",
+        "value": 50,
+        "description": "The dataset has enough rows for repeated validation."
+      }
+    ],
+    "evidence_fields": ["row_count", "column_count"],
+    "recommendation": "Use cross-validation for a more stable model comparison.",
+    "reason_template": "Cross-validation gives a more reliable estimate than a single split when the dataset is large enough.",
+    "pipeline_tags": ["cross_validation"],
+    "confidence_weight": 0.85,
+    "severity": "medium",
+    "priority": 2,
+    "advantages": ["More stable evaluation", "Useful for thesis comparison"],
+    "limitations": ["Takes longer than a single train/test split"],
+    "notes": null
+  },
+  {
+    "rule_id": "CV-A-002",
+    "category": "cross_validation",
+    "name": "Always compare against a simple baseline",
+    "applies_to_task": ["classification", "regression"],
+    "conditions": [
+      {
+        "field": "task_type",
+        "operator": "in",
+        "value": ["classification", "regression"],
+        "description": "A supervised task is being solved."
+      }
+    ],
+    "evidence_fields": ["task_type", "task_confidence"],
+    "recommendation": "Compare the recommended pipeline with a simple baseline pipeline.",
+    "reason_template": "A baseline comparison strengthens the thesis by showing the value of the recommended pipeline.",
+    "pipeline_tags": ["baseline_comparison"],
+    "confidence_weight": 0.9,
+    "severity": "high",
+    "priority": 1,
+    "advantages": ["Improves thesis credibility", "Shows measurable benefit"],
+    "limitations": ["Adds one more evaluation step"],
+    "notes": null
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "project_title": "Design and Implementation of an Explainable Machine Learning Pipeline Recommendation System for Tabular Datasets",
+  "description": "Declarative knowledge base for explainable machine learning pipeline recommendations.",
+  "author": "Janaka Alwis",
+  "created_date": "2026-06-25",
+  "knowledge_base_version": "1.0",
+  "engine_scope": "Recommendation knowledge only",
+  "notes": "This folder separates recommendation knowledge from engine logic."
+}

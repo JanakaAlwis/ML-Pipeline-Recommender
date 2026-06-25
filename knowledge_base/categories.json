@@ -1,0 +1,74 @@
+[
+  {
+    "category_id": "imputation",
+    "name": "Imputation",
+    "description": "Rules for handling missing values.",
+    "task_scope": ["classification", "regression"]
+  },
+  {
+    "category_id": "encoding",
+    "name": "Encoding",
+    "description": "Rules for handling categorical features.",
+    "task_scope": ["classification", "regression"]
+  },
+  {
+    "category_id": "scaling",
+    "name": "Scaling",
+    "description": "Rules for feature scaling strategies.",
+    "task_scope": ["classification", "regression"]
+  },
+  {
+    "category_id": "imbalance_handling",
+    "name": "Imbalance Handling",
+    "description": "Rules for class imbalance strategies.",
+    "task_scope": ["classification"]
+  },
+  {
+    "category_id": "dimensionality_reduction",
+    "name": "Dimensionality Reduction",
+    "description": "Rules for PCA and related dimensionality reduction strategies.",
+    "task_scope": ["classification", "regression"]
+  },
+  {
+    "category_id": "feature_selection",
+    "name": "Feature Selection",
+    "description": "Rules for selecting a smaller set of informative features.",
+    "task_scope": ["classification", "regression"]
+  },
+  {
+    "category_id": "model_family_classification",
+    "name": "Classification Model Families",
+    "description": "Rules for choosing classification model families.",
+    "task_scope": ["classification"]
+  },
+  {
+    "category_id": "model_family_regression",
+    "name": "Regression Model Families",
+    "description": "Rules for choosing regression model families.",
+    "task_scope": ["regression"]
+  },
+  {
+    "category_id": "evaluation_metrics_classification",
+    "name": "Classification Evaluation Metrics",
+    "description": "Rules for selecting classification metrics.",
+    "task_scope": ["classification"]
+  },
+  {
+    "category_id": "evaluation_metrics_regression",
+    "name": "Regression Evaluation Metrics",
+    "description": "Rules for selecting regression metrics.",
+    "task_scope": ["regression"]
+  },
+  {
+    "category_id": "cross_validation",
+    "name": "Cross Validation",
+    "description": "Rules for recommending cross-validation and baseline comparison.",
+    "task_scope": ["classification", "regression"]
+  },
+  {
+    "category_id": "baseline_comparison",
+    "name": "Baseline Comparison",
+    "description": "A conceptual category for comparing recommended pipelines against a simple baseline.",
+    "task_scope": ["classification", "regression"]
+  }
+]

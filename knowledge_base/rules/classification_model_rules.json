@@ -1,0 +1,74 @@
+[
+  {
+    "rule_id": "MOD-C-001",
+    "category": "model_family_classification",
+    "name": "Recommend logistic regression for balanced classification",
+    "applies_to_task": ["classification"],
+    "conditions": [
+      {
+        "field": "task_type",
+        "operator": "=",
+        "value": "classification",
+        "description": "The task is classification."
+      }
+    ],
+    "evidence_fields": ["task_type", "task_confidence"],
+    "recommendation": "Use logistic regression as a strong interpretable baseline.",
+    "reason_template": "Logistic regression is a simple and explainable classification model that works well for structured tabular data.",
+    "pipeline_tags": ["model_family", "logistic_regression"],
+    "confidence_weight": 0.9,
+    "severity": "high",
+    "priority": 1,
+    "advantages": ["Highly explainable", "Fast to train"],
+    "limitations": ["May underperform on nonlinear patterns"],
+    "notes": null
+  },
+  {
+    "rule_id": "MOD-C-002",
+    "category": "model_family_classification",
+    "name": "Recommend tree-based classification for mixed or nonlinear data",
+    "applies_to_task": ["classification"],
+    "conditions": [
+      {
+        "field": "categorical_columns.count",
+        "operator": ">",
+        "value": 0,
+        "description": "The dataset has categorical features."
+      }
+    ],
+    "evidence_fields": ["categorical_columns", "missing_values", "high_correlation_pairs"],
+    "recommendation": "Use decision tree or random forest classification.",
+    "reason_template": "Tree-based models handle mixed feature types and nonlinear relationships well.",
+    "pipeline_tags": ["model_family", "tree_based"],
+    "confidence_weight": 0.86,
+    "severity": "high",
+    "priority": 1,
+    "advantages": ["Handles nonlinear patterns", "Works well with mixed data types"],
+    "limitations": ["Less transparent than linear models"],
+    "notes": null
+  },
+  {
+    "rule_id": "MOD-C-003",
+    "category": "model_family_classification",
+    "name": "Recommend class-weight-aware models for imbalance",
+    "applies_to_task": ["classification"],
+    "conditions": [
+      {
+        "field": "class_imbalance_ratio",
+        "operator": "<",
+        "value": 0.4,
+        "description": "The classification target is imbalanced."
+      }
+    ],
+    "evidence_fields": ["class_imbalance_ratio", "target_distribution"],
+    "recommendation": "Use class-weight-aware classification models.",
+    "reason_template": "Class-aware training helps the model pay more attention to minority classes.",
+    "pipeline_tags": ["model_family", "class_weights"],
+    "confidence_weight": 0.83,
+    "severity": "high",
+    "priority": 1,
+    "advantages": ["Improves minority-class learning", "Keeps the pipeline simple"],
+    "limitations": ["May not be enough for severe imbalance alone"],
+    "notes": null
+  }
+]

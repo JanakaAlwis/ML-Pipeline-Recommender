@@ -1,0 +1,56 @@
+[
+  {
+    "rule_id": "ENC-A-001",
+    "category": "encoding",
+    "name": "Use one-hot encoding for low-cardinality categorical features",
+    "applies_to_task": ["classification", "regression"],
+    "conditions": [
+      {
+        "field": "categorical_columns.count",
+        "operator": ">",
+        "value": 0,
+        "description": "The dataset has categorical features."
+      },
+      {
+        "field": "high_cardinality_columns.count",
+        "operator": "=",
+        "value": 0,
+        "description": "No categorical column is high cardinality."
+      }
+    ],
+    "evidence_fields": ["categorical_columns", "high_cardinality_columns"],
+    "recommendation": "Use one-hot encoding.",
+    "reason_template": "Categorical columns are present and low-cardinality encoding is suitable for transparent preprocessing.",
+    "pipeline_tags": ["encoding", "one_hot"],
+    "confidence_weight": 0.92,
+    "severity": "high",
+    "priority": 1,
+    "advantages": ["Easy to explain", "Works well for small categorical domains"],
+    "limitations": ["Can expand feature space if there are many categories"],
+    "notes": null
+  },
+  {
+    "rule_id": "ENC-A-002",
+    "category": "encoding",
+    "name": "Warn about high-cardinality categorical features",
+    "applies_to_task": ["classification", "regression"],
+    "conditions": [
+      {
+        "field": "high_cardinality_columns.count",
+        "operator": ">",
+        "value": 0,
+        "description": "At least one categorical feature has many distinct values."
+      }
+    ],
+    "evidence_fields": ["high_cardinality_columns", "categorical_columns"],
+    "recommendation": "Consider a careful encoding strategy for high-cardinality columns.",
+    "reason_template": "High-cardinality categorical features may make one-hot encoding less efficient, so a cautious encoding strategy is recommended.",
+    "pipeline_tags": ["encoding", "high_cardinality"],
+    "confidence_weight": 0.8,
+    "severity": "medium",
+    "priority": 2,
+    "advantages": ["Highlights complexity early", "Supports pipeline design choices"],
+    "limitations": ["Does not prescribe an advanced encoding algorithm yet"],
+    "notes": "Keep the first implementation simple and transparent."
+  }
+]

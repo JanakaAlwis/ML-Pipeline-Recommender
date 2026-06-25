@@ -1,0 +1,74 @@
+[
+  {
+    "rule_id": "MOD-R-001",
+    "category": "model_family_regression",
+    "name": "Recommend linear regression for simple regression problems",
+    "applies_to_task": ["regression"],
+    "conditions": [
+      {
+        "field": "task_type",
+        "operator": "=",
+        "value": "regression",
+        "description": "The task is regression."
+      }
+    ],
+    "evidence_fields": ["task_type", "task_confidence"],
+    "recommendation": "Use linear regression as a clear baseline.",
+    "reason_template": "Linear regression is simple, explainable, and useful for baseline comparison.",
+    "pipeline_tags": ["model_family", "linear_regression"],
+    "confidence_weight": 0.9,
+    "severity": "high",
+    "priority": 1,
+    "advantages": ["Easy to explain", "Fast to train"],
+    "limitations": ["May underfit nonlinear relationships"],
+    "notes": null
+  },
+  {
+    "rule_id": "MOD-R-002",
+    "category": "model_family_regression",
+    "name": "Recommend regularized regression for correlated predictors",
+    "applies_to_task": ["regression"],
+    "conditions": [
+      {
+        "field": "high_correlation_pairs.count",
+        "operator": ">",
+        "value": 0,
+        "description": "The dataset contains highly correlated numeric features."
+      }
+    ],
+    "evidence_fields": ["high_correlation_pairs", "numeric_columns"],
+    "recommendation": "Use ridge or lasso regression.",
+    "reason_template": "Regularized regression can control correlated predictors and reduce overfitting.",
+    "pipeline_tags": ["model_family", "ridge_lasso"],
+    "confidence_weight": 0.84,
+    "severity": "medium",
+    "priority": 2,
+    "advantages": ["Controls overfitting", "Handles correlated numeric features well"],
+    "limitations": ["Needs scaling to behave well"],
+    "notes": null
+  },
+  {
+    "rule_id": "MOD-R-003",
+    "category": "model_family_regression",
+    "name": "Recommend tree-based regression for nonlinear problems",
+    "applies_to_task": ["regression"],
+    "conditions": [
+      {
+        "field": "categorical_columns.count",
+        "operator": ">",
+        "value": 0,
+        "description": "The dataset has categorical features."
+      }
+    ],
+    "evidence_fields": ["categorical_columns", "missing_values"],
+    "recommendation": "Use decision tree or random forest regression.",
+    "reason_template": "Tree-based models can capture nonlinear relationships and handle mixed feature types.",
+    "pipeline_tags": ["model_family", "tree_based"],
+    "confidence_weight": 0.86,
+    "severity": "high",
+    "priority": 1,
+    "advantages": ["Flexible", "Handles nonlinear structure"],
+    "limitations": ["Can be less transparent than linear models"],
+    "notes": null
+  }
+]

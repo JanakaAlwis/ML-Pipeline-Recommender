@@ -1,0 +1,50 @@
+[
+  {
+    "rule_id": "IMP-A-001",
+    "category": "imputation",
+    "name": "Impute missing values when any missingness exists",
+    "applies_to_task": ["classification", "regression"],
+    "conditions": [
+      {
+        "field": "missing_values.total_count",
+        "operator": ">",
+        "value": 0,
+        "description": "The dataset has at least one missing value."
+      }
+    ],
+    "evidence_fields": ["missing_values", "missing_percentages", "row_count"],
+    "recommendation": "Use imputation for missing values.",
+    "reason_template": "The dataset contains missing values, so a preprocessing step is needed to preserve rows and avoid data loss.",
+    "pipeline_tags": ["imputation"],
+    "confidence_weight": 0.95,
+    "severity": "high",
+    "priority": 1,
+    "advantages": ["Preserves data", "Keeps the pipeline usable"],
+    "limitations": ["Can introduce bias if missingness is not random"],
+    "notes": "Use as a general missing-value rule."
+  },
+  {
+    "rule_id": "IMP-A-002",
+    "category": "imputation",
+    "name": "Prefer median imputation for numeric features",
+    "applies_to_task": ["classification", "regression"],
+    "conditions": [
+      {
+        "field": "numeric_columns.missing_count",
+        "operator": ">",
+        "value": 0,
+        "description": "At least one numeric feature contains missing values."
+      }
+    ],
+    "evidence_fields": ["numeric_columns", "missing_values"],
+    "recommendation": "Use median imputation for numeric columns.",
+    "reason_template": "Numeric columns contain missing values, and median imputation is robust to outliers.",
+    "pipeline_tags": ["imputation", "numeric"],
+    "confidence_weight": 0.9,
+    "severity": "high",
+    "priority": 1,
+    "advantages": ["Robust to outliers", "Simple to explain"],
+    "limitations": ["May hide the shape of the missingness pattern"],
+    "notes": null
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "rule_id": "MET-C-001",
+    "category": "evaluation_metrics_classification",
+    "name": "Use standard classification metrics",
+    "applies_to_task": ["classification"],
+    "conditions": [
+      {
+        "field": "task_type",
+        "operator": "=",
+        "value": "classification",
+        "description": "The task is classification."
+      }
+    ],
+    "evidence_fields": ["task_type", "class_imbalance_ratio"],
+    "recommendation": "Use accuracy, precision, recall, F1-score, and a confusion matrix.",
+    "reason_template": "Classification metrics must reflect both overall performance and class-wise behaviour.",
+    "pipeline_tags": ["evaluation_metrics", "classification"],
+    "confidence_weight": 0.95,
+    "severity": "high",
+    "priority": 1,
+    "advantages": ["Easy to interpret", "Works for most classification tasks"],
+    "limitations": ["Accuracy alone may be misleading for imbalanced data"],
+    "notes": null
+  },
+  {
+    "rule_id": "MET-C-002",
+    "category": "evaluation_metrics_classification",
+    "name": "Add ROC-AUC for binary classification",
+    "applies_to_task": ["classification"],
+    "conditions": [
+      {
+        "field": "target_unique_count",
+        "operator": "=",
+        "value": 2,
+        "description": "The classification target is binary."
+      }
+    ],
+    "evidence_fields": ["target_unique_count", "target_distribution"],
+    "recommendation": "Add ROC-AUC when the classification target is binary.",
+    "reason_template": "Binary classification allows threshold-based discrimination analysis.",
+    "pipeline_tags": ["evaluation_metrics", "roc_auc"],
+    "confidence_weight": 0.8,
+    "severity": "medium",
+    "priority": 2,
+    "advantages": ["Shows threshold-independent separation ability"],
+    "limitations": ["Not always as intuitive as confusion-matrix-based metrics"],
+    "notes": null
+  },
+  {
+    "rule_id": "MET-R-001",
+    "category": "evaluation_metrics_regression",
+    "name": "Use standard regression metrics",
+    "applies_to_task": ["regression"],
+    "conditions": [
+      {
+        "field": "task_type",
+        "operator": "=",
+        "value": "regression",
+        "description": "The task is regression."
+      }
+    ],
+    "evidence_fields": ["task_type"],
+    "recommendation": "Use MAE, MSE, RMSE, and R2.",
+    "reason_template": "Regression problems require error-based and fit-based metrics.",
+    "pipeline_tags": ["evaluation_metrics", "regression"],
+    "confidence_weight": 0.95,
+    "severity": "high",
+    "priority": 1,
+    "advantages": ["Clear regression summary", "Widely understood metrics"],
+    "limitations": ["No single metric fully captures model quality"],
+    "notes": null
+  }
+]

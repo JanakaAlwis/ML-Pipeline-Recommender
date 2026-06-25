@@ -1,0 +1,50 @@
+[
+  {
+    "rule_id": "IMB-C-001",
+    "category": "imbalance_handling",
+    "name": "Use class weights for moderate imbalance",
+    "applies_to_task": ["classification"],
+    "conditions": [
+      {
+        "field": "class_imbalance_ratio",
+        "operator": "<=",
+        "value": 0.4,
+        "description": "The target classes are moderately imbalanced."
+      }
+    ],
+    "evidence_fields": ["class_imbalance_ratio", "target_distribution"],
+    "recommendation": "Use class weights or threshold tuning.",
+    "reason_template": "The classification target is imbalanced, so class-aware training can improve minority-class performance.",
+    "pipeline_tags": ["imbalance_handling", "class_weights"],
+    "confidence_weight": 0.86,
+    "severity": "high",
+    "priority": 1,
+    "advantages": ["Simple to apply", "Improves minority-class attention"],
+    "limitations": ["May not fully solve severe imbalance"],
+    "notes": null
+  },
+  {
+    "rule_id": "IMB-C-002",
+    "category": "imbalance_handling",
+    "name": "Consider SMOTE for strong imbalance",
+    "applies_to_task": ["classification"],
+    "conditions": [
+      {
+        "field": "class_imbalance_ratio",
+        "operator": "<",
+        "value": 0.2,
+        "description": "The target classes are strongly imbalanced."
+      }
+    ],
+    "evidence_fields": ["class_imbalance_ratio", "target_distribution"],
+    "recommendation": "Consider SMOTE inside the training pipeline.",
+    "reason_template": "The minority class is very small, so synthetic oversampling can improve learning if applied only after the train/test split.",
+    "pipeline_tags": ["imbalance_handling", "smote"],
+    "confidence_weight": 0.9,
+    "severity": "high",
+    "priority": 1,
+    "advantages": ["Can improve minority-class recall", "Useful for highly imbalanced data"],
+    "limitations": ["Must be applied only inside training folds"],
+    "notes": null
+  }
+]

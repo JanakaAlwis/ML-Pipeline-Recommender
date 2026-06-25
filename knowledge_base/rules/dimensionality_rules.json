@@ -1,0 +1,50 @@
+[
+  {
+    "rule_id": "DIM-A-001",
+    "category": "dimensionality_reduction",
+    "name": "Recommend PCA for correlated numeric features",
+    "applies_to_task": ["classification", "regression"],
+    "conditions": [
+      {
+        "field": "high_correlation_pairs.count",
+        "operator": ">",
+        "value": 0,
+        "description": "The dataset contains highly correlated numeric features."
+      }
+    ],
+    "evidence_fields": ["high_correlation_pairs", "numeric_columns"],
+    "recommendation": "Consider PCA to reduce redundancy.",
+    "reason_template": "Strongly correlated features suggest that PCA may simplify the feature space and reduce redundancy.",
+    "pipeline_tags": ["dimensionality_reduction", "pca"],
+    "confidence_weight": 0.84,
+    "severity": "medium",
+    "priority": 2,
+    "advantages": ["Reduces redundancy", "Can simplify model learning"],
+    "limitations": ["Reduces direct interpretability"],
+    "notes": null
+  },
+  {
+    "rule_id": "DIM-A-002",
+    "category": "feature_selection",
+    "name": "Recommend feature selection when numeric feature count is large",
+    "applies_to_task": ["classification", "regression"],
+    "conditions": [
+      {
+        "field": "numeric_columns.count",
+        "operator": ">=",
+        "value": 10,
+        "description": "The dataset has many numeric features."
+      }
+    ],
+    "evidence_fields": ["numeric_columns", "column_count"],
+    "recommendation": "Consider feature selection or dimensionality reduction.",
+    "reason_template": "A larger numeric feature set can increase model complexity, so a smaller feature subset may be easier to manage.",
+    "pipeline_tags": ["feature_selection"],
+    "confidence_weight": 0.7,
+    "severity": "low",
+    "priority": 3,
+    "advantages": ["Can reduce model size", "May simplify interpretation"],
+    "limitations": ["Does not specify a single feature selection method"],
+    "notes": null
+  }
+]
