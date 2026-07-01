@@ -7,6 +7,7 @@ import streamlit as st
 
 from src.application_state import has_dataset, initialize_session_state
 from src.data_profiler import profile_dataset
+from app.streamlit_app import render_header
 
 
 def render() -> None:
@@ -14,8 +15,12 @@ def render() -> None:
 
     initialize_session_state(st.session_state)
 
-    st.title("Dataset Profile")
-    st.write("This page will summarize dataset structure, missing values, and feature types.")
+    render_header(
+        "Dataset Profile",
+        "Inspect data quality before selecting the target.",
+        "Use the result to choose the target column and detect the task type.",
+        "A profile summarizes what the model will see and highlights potential data issues.",
+    )
 
     if not has_dataset(st.session_state):
         st.warning("Please upload a dataset first.")
@@ -26,10 +31,14 @@ def render() -> None:
         st.warning("Please upload a dataset first.")
         return
 
-    st.subheader("Dataset Overview")
-    st.write(f"Shape: {dataframe.shape[0]} rows x {dataframe.shape[1]} columns")
-    st.write("Columns:")
-    st.write(list(dataframe.columns))
+    st.subheader("Dataset overview")
+    overview_left, overview_right, overview_third = st.columns(3)
+    overview_left.metric("Rows", dataframe.shape[0])
+    overview_right.metric("Columns", dataframe.shape[1])
+    overview_third.metric("Unique columns", len(dataframe.columns))
+
+    st.write("Columns in the uploaded dataset:")
+    st.dataframe(pd.DataFrame({"column": list(dataframe.columns)}), use_container_width=True)
 
     if st.button("Generate Dataset Profile"):
         profile_result = profile_dataset(dataframe)
@@ -41,12 +50,21 @@ def render() -> None:
             return
 
         st.success("Dataset profile generated successfully.")
-        st.write(f"Row count: {profile_result.row_count}")
-        st.write(f"Column count: {profile_result.column_count}")
-        st.write(f"Numeric columns: {profile_result.numeric_columns}")
-        st.write(f"Categorical columns: {profile_result.categorical_columns}")
-        st.write(f"Boolean columns: {profile_result.boolean_columns}")
-        st.write(f"Datetime columns: {profile_result.datetime_columns}")
+        profile_left, profile_right, profile_third = st.columns(3)
+        profile_left.metric("Rows", profile_result.row_count)
+        profile_right.metric("Columns", profile_result.column_count)
+        profile_third.metric("Duplicate rows", profile_result.duplicate_row_count)
+
+        feature_types_table = pd.DataFrame(
+            [
+                {"feature_type": "Numeric", "columns": ", ".join(profile_result.numeric_columns) or "None"},
+                {"feature_type": "Categorical", "columns": ", ".join(profile_result.categorical_columns) or "None"},
+                {"feature_type": "Boolean", "columns": ", ".join(profile_result.boolean_columns) or "None"},
+                {"feature_type": "Datetime", "columns": ", ".join(profile_result.datetime_columns) or "None"},
+            ]
+        )
+        st.subheader("Column types")
+        st.dataframe(feature_types_table, use_container_width=True)
 
         missing_values_table = pd.DataFrame(
             list(profile_result.missing_values.items()),
@@ -54,6 +72,8 @@ def render() -> None:
         )
         st.subheader("Missing Values")
         st.dataframe(missing_values_table, use_container_width=True)
+        if not missing_values_table.empty and missing_values_table["missing_count"].sum() > 0:
+            st.bar_chart(missing_values_table.set_index("column"))
 
         st.subheader("Duplicate Rows")
         st.write(profile_result.duplicate_row_count)
@@ -72,16 +92,14 @@ def render() -> None:
         st.subheader("Outlier Counts")
         st.dataframe(outlier_counts_table, use_container_width=True)
 
+        if profile_result.target_distribution is not None and not profile_result.target_distribution.empty:
+            st.subheader("Target distribution")
+            st.bar_chart(profile_result.target_distribution)
+
         st.subheader("Sample Rows")
         if profile_result.sample_rows is not None:
             st.dataframe(profile_result.sample_rows, use_container_width=True)
         else:
             st.write("No sample rows available.")
 
-    st.markdown(
-        """
-        ### Placeholder content
-        The profile is generated on demand and stored in session state for the
-        next workflow steps.
-        """
-    )
+    st.info("After profiling, move to Task Detection to choose the target column and classify the problem type.")

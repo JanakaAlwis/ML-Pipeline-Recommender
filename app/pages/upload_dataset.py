@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import pandas as pd
 import streamlit as st
 
 from src.application_state import initialize_session_state, reset_workflow_state
 from src.data_loader import load_csv
+from app.streamlit_app import render_header
 
 
 def render() -> None:
@@ -13,9 +15,14 @@ def render() -> None:
 
     initialize_session_state(st.session_state)
 
-    st.title("Upload Dataset")
-    st.write("Upload a CSV file to start the thesis workflow.")
-    st.info("Only CSV files are supported at this stage.")
+    render_header(
+        "Upload Dataset",
+        "Load a CSV file to start the workflow.",
+        "After upload, generate a dataset profile.",
+        "A valid dataset becomes the shared input for all later steps.",
+    )
+
+    st.info("Only CSV files are supported. The uploaded dataset will be stored in session state and downstream results will be cleared.")
 
     uploaded_file = st.file_uploader(
         "Choose a CSV file",
@@ -31,13 +38,8 @@ def render() -> None:
         st.rerun()
 
     if uploaded_file is None:
-        st.markdown(
-            """
-            ### Placeholder content
-            After you upload a CSV, the dataframe will be stored in session state
-            and the downstream workflow will be reset.
-            """
-        )
+        st.markdown("#### What to do next")
+        st.write("Choose a CSV file to load the dataset and reset any previous workflow state.")
         return
 
     load_result = load_csv(uploaded_file)
@@ -51,5 +53,20 @@ def render() -> None:
     st.session_state["dataframe"] = load_result.dataframe
 
     st.success(f"Loaded '{load_result.source_name}' successfully.")
-    st.write(f"Rows: {load_result.rows}, Columns: {load_result.columns}")
+    summary_left, summary_right, summary_third = st.columns(3)
+    summary_left.metric("Rows", load_result.rows)
+    summary_right.metric("Columns", load_result.columns)
+    summary_third.metric("Missing cells", int(load_result.dataframe.isna().sum().sum()))
+
+    st.subheader("Dataset preview")
     st.dataframe(load_result.dataframe.head(10), use_container_width=True)
+
+    st.subheader("Column types")
+    column_types = pd.DataFrame({
+        "column": load_result.dataframe.columns,
+        "dtype": [str(dtype) for dtype in load_result.dataframe.dtypes],
+    })
+    st.dataframe(column_types, use_container_width=True)
+
+    st.subheader("Next step")
+    st.write("Go to Dataset Profile to inspect missing values, feature types, and dataset quality patterns.")

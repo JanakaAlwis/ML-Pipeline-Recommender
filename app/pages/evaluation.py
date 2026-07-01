@@ -7,6 +7,7 @@ import streamlit as st
 
 from src.application_state import has_dataset, has_task_detection, has_training_result, initialize_session_state
 from src.model_evaluator import evaluate_model
+from app.streamlit_app import render_header
 
 
 def render() -> None:
@@ -14,7 +15,12 @@ def render() -> None:
 
     initialize_session_state(st.session_state)
 
-    st.title("Evaluation")
+    render_header(
+        "Evaluation",
+        "Review the fitted model on the held-out data.",
+        "After evaluation, generate explainability results.",
+        "These metrics show how well the trained pipeline generalizes to unseen data.",
+    )
 
     if not has_dataset(st.session_state):
         st.warning("Please upload a dataset first.")
@@ -49,24 +55,25 @@ def render() -> None:
             return
 
         st.success("Evaluation completed successfully.")
-        st.write(f"Quality rating: {evaluation_result.quality_rating}")
-        st.write(f"Quality summary: {evaluation_result.quality_summary}")
+        quality_left, quality_right = st.columns(2)
+        quality_left.metric("Quality rating", evaluation_result.quality_rating or "N/A")
+        quality_right.metric("Rows evaluated", evaluation_result.row_count if evaluation_result.row_count is not None else "N/A")
+
+        st.write(evaluation_result.quality_summary)
 
         if evaluation_result.classification_metrics is not None:
             st.subheader("Classification Metrics")
-            st.json(evaluation_result.classification_metrics)
+            classification_metrics_table = pd.DataFrame(list(evaluation_result.classification_metrics.items()), columns=["metric", "value"])
+            st.dataframe(classification_metrics_table, use_container_width=True)
             if evaluation_result.confusion_matrix is not None:
                 st.subheader("Confusion Matrix")
                 confusion_df = pd.DataFrame(evaluation_result.confusion_matrix)
                 st.dataframe(confusion_df, use_container_width=True)
+                st.bar_chart(confusion_df)
 
         if evaluation_result.regression_metrics is not None:
             st.subheader("Regression Metrics")
-            st.json(evaluation_result.regression_metrics)
+            regression_metrics_table = pd.DataFrame(list(evaluation_result.regression_metrics.items()), columns=["metric", "value"])
+            st.dataframe(regression_metrics_table, use_container_width=True)
 
-    st.markdown(
-        """
-        ### Placeholder content
-        The evaluation result will be stored in session state for future reporting.
-        """
-    )
+    st.info("After evaluation, you can move to Explainability to see which original features influenced the model most.")

@@ -7,6 +7,7 @@ import streamlit as st
 
 from src.application_state import has_profile, has_task_detection, initialize_session_state
 from src.recommendation_engine import recommend_pipelines
+from app.streamlit_app import render_header
 
 
 def render() -> None:
@@ -14,7 +15,12 @@ def render() -> None:
 
     initialize_session_state(st.session_state)
 
-    st.title("Pipeline Recommendations")
+    render_header(
+        "Pipeline Recommendations",
+        "Review explainable pipeline candidates for the detected task.",
+        "Select a pipeline, then continue to training.",
+        "The recommendation explains why the pipeline is a good match for the dataset.",
+    )
 
     if not has_profile(st.session_state):
         st.warning("Please generate the dataset profile first.")
@@ -83,6 +89,11 @@ def render() -> None:
     st.subheader("Top 3 Pipelines")
     st.dataframe(summary_table, use_container_width=True)
 
+    detail_left, detail_right, detail_third = st.columns(3)
+    detail_left.metric("Selected rank", selected_pipeline.pipeline_rank)
+    detail_right.metric("Confidence", f"{selected_pipeline.confidence_score:.2f}")
+    detail_third.metric("Complexity", selected_pipeline.estimated_training_complexity)
+
     st.subheader("Selected Pipeline Details")
     st.write(f"Confidence: {selected_pipeline.confidence_score}")
     st.write(f"Evidence: {selected_pipeline.evidence}")
@@ -91,9 +102,4 @@ def render() -> None:
     st.write(f"Preprocessing steps: {selected_pipeline.preprocessing_steps}")
     st.write(f"Model family: {selected_pipeline.recommended_model_family}")
 
-    st.markdown(
-        """
-        ### Placeholder content
-        The selected pipeline will be passed to the training step in the next page.
-        """
-    )
+    st.info("After choosing a pipeline, move to Training to fit it on the uploaded dataset.")

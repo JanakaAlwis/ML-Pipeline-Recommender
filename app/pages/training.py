@@ -8,6 +8,7 @@ import streamlit as st
 from src.application_state import has_dataset, has_profile, has_task_detection, initialize_session_state
 from src.model_trainer import train_pipeline
 from src.pipeline_builder import build_pipeline
+from app.streamlit_app import render_header
 
 
 def render() -> None:
@@ -15,7 +16,12 @@ def render() -> None:
 
     initialize_session_state(st.session_state)
 
-    st.title("Training")
+    render_header(
+        "Training",
+        "Build and fit the selected pipeline on the uploaded dataset.",
+        "After training, evaluate the model and inspect the results.",
+        "Training turns the recommendation into a fitted model that can be evaluated and explained.",
+    )
 
     if not has_dataset(st.session_state):
         st.warning("Please upload a dataset first.")
@@ -66,18 +72,20 @@ def render() -> None:
             return
 
         st.success("Training completed successfully.")
-        st.write(f"Training time (seconds): {training_result.training_time_seconds}")
-        st.write(f"Cross-validation scores: {training_result.cross_validation_scores}")
-        st.write(f"Mean CV score: {training_result.mean_cv_score}")
-        st.write(f"Std CV score: {training_result.std_cv_score}")
+        metrics_left, metrics_right, metrics_third = st.columns(3)
+        metrics_left.metric("Training time (s)", f"{training_result.training_time_seconds:.3f}" if training_result.training_time_seconds is not None else "N/A")
+        metrics_right.metric("Mean CV score", f"{training_result.mean_cv_score:.3f}" if training_result.mean_cv_score is not None else "N/A")
+        metrics_third.metric("Std CV score", f"{training_result.std_cv_score:.3f}" if training_result.std_cv_score is not None else "N/A")
 
         if training_result.cross_validation_scores:
-            cv_table = pd.DataFrame({"cv_score": training_result.cross_validation_scores})
+            cv_table = pd.DataFrame({"fold": list(range(1, len(training_result.cross_validation_scores) + 1)), "cv_score": training_result.cross_validation_scores})
+            st.subheader("Cross-validation scores")
             st.dataframe(cv_table, use_container_width=True)
+            st.bar_chart(cv_table.set_index("fold"))
 
-    st.markdown(
-        """
-        ### Placeholder content
-        The fitted pipeline will be stored in session state for evaluation.
-        """
-    )
+        st.subheader("Training summary")
+        st.write(f"Model: {training_result.model_name}")
+        st.write(f"Scoring metric: {training_result.scoring_metric}")
+        st.write(f"Train rows: {training_result.train_row_count}, Test rows: {training_result.test_row_count}")
+
+    st.info("Once training is complete, go to Evaluation to inspect model quality and predictions.")

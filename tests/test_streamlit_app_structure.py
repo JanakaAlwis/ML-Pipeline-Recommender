@@ -30,6 +30,7 @@ EXPECTED_SESSION_STATE_KEYS = [
     "built_pipeline_result",
     "training_result",
     "evaluation_result",
+    "explainability_result",
 ]
 
 

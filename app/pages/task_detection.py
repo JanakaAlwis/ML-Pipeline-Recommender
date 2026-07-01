@@ -7,6 +7,7 @@ import streamlit as st
 
 from src.application_state import has_dataset, has_profile, initialize_session_state
 from src.task_detector import detect_task_type
+from app.streamlit_app import render_header
 
 
 def render() -> None:
@@ -14,7 +15,12 @@ def render() -> None:
 
     initialize_session_state(st.session_state)
 
-    st.title("Task Detection")
+    render_header(
+        "Task Detection",
+        "Select the target column and determine whether the problem is classification or regression.",
+        "After detection, generate pipeline recommendations.",
+        "The detected task determines the downstream models, metrics, and preprocessing strategy.",
+    )
 
     if not has_dataset(st.session_state):
         st.warning("Please upload a dataset first.")
@@ -38,6 +44,13 @@ def render() -> None:
     )
     st.session_state["target_column"] = selected_target_column
 
+    target_counts = dataframe[selected_target_column].value_counts(dropna=False).head(20)
+    target_table = target_counts.rename_axis("value").reset_index(name="count")
+    st.subheader("Target distribution")
+    st.dataframe(target_table, use_container_width=True)
+    if not target_counts.empty:
+        st.bar_chart(target_counts)
+
     if st.button("Detect Task Type"):
         task_result = detect_task_type(dataframe, selected_target_column)
         st.session_state["task_result"] = task_result
@@ -58,10 +71,4 @@ def render() -> None:
         if task_result.alternative_task_type is not None:
             st.write(f"Alternative task type: {task_result.alternative_task_type}")
 
-    st.markdown(
-        """
-        ### Placeholder content
-        The detected task will be stored in session state for the recommendation
-        step that comes next.
-        """
-    )
+    st.info("If the task is classification, the system will recommend classification pipelines and metrics. If regression, it will switch to regression-specific options.")
