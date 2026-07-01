@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from application_state import (
+from src.application_state import (
     EXPECTED_SESSION_KEYS,
     has_dataset,
     has_evaluation_result,

@@ -6,17 +6,17 @@ from dataclasses import fields
 
 import pandas as pd
 
-from data_profiler import DatasetProfileResult
-from model_evaluator import (
+from src.data_profiler import DatasetProfileResult
+from src.model_evaluator import (
     EvaluationResult,
     InvalidEvaluationInputError,
     ModelEvaluator,
     evaluate_model,
 )
-from model_trainer import TrainingResult, train_pipeline
-from pipeline_builder import build_pipeline
-from recommendation_engine import PipelineRecommendation
-from task_detector import TaskDetectionResult
+from src.model_trainer import TrainingResult, train_pipeline
+from src.pipeline_builder import build_pipeline
+from src.recommendation_engine import PipelineRecommendation
+from src.task_detector import TaskDetectionResult
 
 
 def _classification_train_data() -> pd.DataFrame:

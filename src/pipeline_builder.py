@@ -12,9 +12,9 @@ import logging
 import re
 from typing import Any
 
-from data_profiler import DatasetProfileResult
-from recommendation_engine import PipelineRecommendation
-from task_detector import TaskDetectionResult
+from src.data_profiler import DatasetProfileResult
+from src.recommendation_engine import PipelineRecommendation
+from src.task_detector import TaskDetectionResult
 
 from sklearn.compose import ColumnTransformer
 from sklearn.decomposition import PCA

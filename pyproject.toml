@@ -9,7 +9,7 @@ authors = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["."]
 
 [tool.black]
 line-length = 88

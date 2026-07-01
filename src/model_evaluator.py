@@ -23,7 +23,7 @@ from sklearn.metrics import (
     recall_score,
 )
 
-from model_trainer import TrainingResult
+from src.model_trainer import TrainingResult
 
 logger = logging.getLogger(__name__)
 

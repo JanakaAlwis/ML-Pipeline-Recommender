@@ -6,7 +6,7 @@ from dataclasses import fields
 
 import pandas as pd
 
-from task_detector import (
+from src.task_detector import (
     TaskDetectionResult,
     InvalidInputError,
     MissingTargetColumnError,

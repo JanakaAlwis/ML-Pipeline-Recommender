@@ -11,9 +11,9 @@ import logging
 from statistics import mean
 from typing import Any
 
-from data_profiler import DatasetProfileResult
-from knowledge_base import KnowledgeBase, KnowledgeBaseError, KnowledgeBaseRule, PipelineArchetype
-from task_detector import TaskDetectionResult
+from src.data_profiler import DatasetProfileResult
+from src.knowledge_base import KnowledgeBase, KnowledgeBaseError, KnowledgeBaseRule, PipelineArchetype
+from src.task_detector import TaskDetectionResult
 
 logger = logging.getLogger(__name__)
 

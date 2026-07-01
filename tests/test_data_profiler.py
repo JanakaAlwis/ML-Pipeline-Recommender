@@ -6,7 +6,7 @@ from dataclasses import fields
 
 import pandas as pd
 
-from data_profiler import (
+from src.data_profiler import (
     DatasetProfileResult,
     EmptyDatasetError,
     InvalidDatasetError,

@@ -16,9 +16,9 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import KFold, StratifiedKFold, cross_val_score, train_test_split
 
-from data_profiler import DatasetProfileResult
-from pipeline_builder import BuiltPipelineResult
-from task_detector import TaskDetectionResult
+from src.data_profiler import DatasetProfileResult
+from src.pipeline_builder import BuiltPipelineResult
+from src.task_detector import TaskDetectionResult
 
 logger = logging.getLogger(__name__)
 

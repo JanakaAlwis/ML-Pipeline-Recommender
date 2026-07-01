@@ -7,8 +7,8 @@ from dataclasses import fields
 import pandas as pd
 import pytest
 
-from data_profiler import DatasetProfileResult
-from pipeline_builder import (
+from src.data_profiler import DatasetProfileResult
+from src.pipeline_builder import (
     BuiltPipelineResult,
     InvalidPipelineRecommendationError,
     PipelineBuilder,
@@ -16,8 +16,8 @@ from pipeline_builder import (
     UnsupportedModelError,
     build_pipeline,
 )
-from recommendation_engine import PipelineRecommendation
-from task_detector import TaskDetectionResult
+from src.recommendation_engine import PipelineRecommendation
+from src.task_detector import TaskDetectionResult
 
 
 def _make_profile_result(*, task_type: str, include_booleans: bool = False) -> DatasetProfileResult:

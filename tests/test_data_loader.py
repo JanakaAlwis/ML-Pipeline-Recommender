@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from data_loader import (
+from src.data_loader import (
 	CSVLoadResult,
 	load_csv,
 	load_csv_from_path,

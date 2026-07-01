@@ -7,9 +7,9 @@ from dataclasses import fields
 import pandas as pd
 import pytest
 
-from data_profiler import DatasetProfileResult
-from knowledge_base import KnowledgeBase
-from recommendation_engine import (
+from src.data_profiler import DatasetProfileResult
+from src.knowledge_base import KnowledgeBase
+from src.recommendation_engine import (
     ENGINE_VERSION,
     InvalidRecommendationInputError,
     PipelineRecommendation,
@@ -19,7 +19,7 @@ from recommendation_engine import (
     recommend_pipelines,
     validate_recommendation_input,
 )
-from task_detector import TaskDetectionResult
+from src.task_detector import TaskDetectionResult
 
 
 def _make_profile_result(

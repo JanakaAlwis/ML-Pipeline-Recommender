@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from knowledge_base import (
+from src.knowledge_base import (
     KnowledgeBase,
     KnowledgeBaseCategory,
     KnowledgeBaseCondition,
