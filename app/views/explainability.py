@@ -5,9 +5,9 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from app.streamlit_app import render_header
 from src.application_state import has_dataset, has_task_detection, has_training_result, initialize_session_state
 from src.explainability import explain_model
-from app.streamlit_app import render_header
 
 
 def render() -> None:
@@ -19,7 +19,7 @@ def render() -> None:
         "Explainability",
         "Interpret the trained model using feature importance.",
         "Review the most influential features and their relative importance.",
-        "The explanation summarizes which original inputs were most influential in the trained model.",
+        "This page shows which original features influenced the model most.",
     )
 
     if not has_dataset(st.session_state):
@@ -38,7 +38,7 @@ def render() -> None:
         st.warning("Please select a target column first.")
         return
 
-    st.write("Generate a simple explanation for the trained model.")
+    st.write("Generate the explanation for the trained model.")
 
     if st.button("Generate Explainability"):
         explainability_result = explain_model(
@@ -58,8 +58,7 @@ def render() -> None:
     if explainability_result is None:
         st.markdown(
             """
-            ### Placeholder content
-            Generate explainability to see feature importance and a short summary.
+            Generate explainability to see feature importance.
             """
         )
         return
@@ -73,7 +72,7 @@ def render() -> None:
     summary_left.metric("Method", explainability_result.method_used or "N/A")
     summary_right.metric("Features ranked", len(explainability_result.top_features))
 
-    st.subheader("Explainability Summary")
+    st.subheader("Summary")
     st.write(explainability_result.explanation_summary)
 
     if explainability_result.top_features:
@@ -81,9 +80,9 @@ def render() -> None:
             explainability_result.top_features,
             columns=["Feature", "Importance"],
         )
-        st.subheader("Top Features")
+        st.subheader("Top features")
         st.dataframe(top_features_df, use_container_width=True)
-        st.subheader("Feature Importance")
+        st.subheader("Feature importance")
         st.bar_chart(top_features_df.set_index("Feature"))
 
-    st.info("Permutation importance is used here because it is simple to explain in a thesis defense and does not require SHAP.")
+    st.info("Next: open Report.")

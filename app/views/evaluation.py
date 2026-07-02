@@ -5,9 +5,9 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from app.streamlit_app import render_header
 from src.application_state import has_dataset, has_task_detection, has_training_result, initialize_session_state
 from src.model_evaluator import evaluate_model
-from app.streamlit_app import render_header
 
 
 def render() -> None:
@@ -19,7 +19,7 @@ def render() -> None:
         "Evaluation",
         "Review the fitted model on the held-out data.",
         "After evaluation, generate explainability results.",
-        "These metrics show how well the trained pipeline generalizes to unseen data.",
+        "These metrics show how well the model performs on unseen data.",
     )
 
     if not has_dataset(st.session_state):
@@ -38,7 +38,7 @@ def render() -> None:
         st.warning("Please select a target column first.")
         return
 
-    st.write("Evaluate the trained pipeline on the available dataset.")
+    st.write("Evaluate the trained pipeline.")
 
     if st.button("Evaluate Model"):
         evaluation_result = evaluate_model(
@@ -62,18 +62,18 @@ def render() -> None:
         st.write(evaluation_result.quality_summary)
 
         if evaluation_result.classification_metrics is not None:
-            st.subheader("Classification Metrics")
+            st.subheader("Classification metrics")
             classification_metrics_table = pd.DataFrame(list(evaluation_result.classification_metrics.items()), columns=["metric", "value"])
             st.dataframe(classification_metrics_table, use_container_width=True)
             if evaluation_result.confusion_matrix is not None:
-                st.subheader("Confusion Matrix")
+                st.subheader("Confusion matrix")
                 confusion_df = pd.DataFrame(evaluation_result.confusion_matrix)
                 st.dataframe(confusion_df, use_container_width=True)
                 st.bar_chart(confusion_df)
 
         if evaluation_result.regression_metrics is not None:
-            st.subheader("Regression Metrics")
+            st.subheader("Regression metrics")
             regression_metrics_table = pd.DataFrame(list(evaluation_result.regression_metrics.items()), columns=["metric", "value"])
             st.dataframe(regression_metrics_table, use_container_width=True)
 
-    st.info("After evaluation, you can move to Explainability to see which original features influenced the model most.")
+    st.info("Next: open Explainability.")

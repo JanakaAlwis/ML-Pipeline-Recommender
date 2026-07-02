@@ -5,9 +5,9 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from app.streamlit_app import render_header
 from src.application_state import has_dataset, initialize_session_state
 from src.data_profiler import profile_dataset
-from app.streamlit_app import render_header
 
 
 def render() -> None:
@@ -19,7 +19,7 @@ def render() -> None:
         "Dataset Profile",
         "Inspect data quality before selecting the target.",
         "Use the result to choose the target column and detect the task type.",
-        "A profile summarizes what the model will see and highlights potential data issues.",
+        "This summary helps explain the dataset before modeling.",
     )
 
     if not has_dataset(st.session_state):
@@ -70,36 +70,36 @@ def render() -> None:
             list(profile_result.missing_values.items()),
             columns=["column", "missing_count"],
         )
-        st.subheader("Missing Values")
+        st.subheader("Missing values")
         st.dataframe(missing_values_table, use_container_width=True)
         if not missing_values_table.empty and missing_values_table["missing_count"].sum() > 0:
             st.bar_chart(missing_values_table.set_index("column"))
 
-        st.subheader("Duplicate Rows")
+        st.subheader("Duplicates")
         st.write(profile_result.duplicate_row_count)
 
         high_correlation_pairs_table = pd.DataFrame(
             profile_result.high_correlation_pairs,
             columns=["column_1", "column_2", "correlation"],
         )
-        st.subheader("High Correlation Pairs")
+        st.subheader("High correlations")
         st.dataframe(high_correlation_pairs_table, use_container_width=True)
 
         outlier_counts_table = pd.DataFrame(
             list(profile_result.outlier_counts.items()),
             columns=["column", "outlier_count"],
         )
-        st.subheader("Outlier Counts")
+        st.subheader("Outliers")
         st.dataframe(outlier_counts_table, use_container_width=True)
 
         if profile_result.target_distribution is not None and not profile_result.target_distribution.empty:
             st.subheader("Target distribution")
             st.bar_chart(profile_result.target_distribution)
 
-        st.subheader("Sample Rows")
+        st.subheader("Sample rows")
         if profile_result.sample_rows is not None:
             st.dataframe(profile_result.sample_rows, use_container_width=True)
         else:
             st.write("No sample rows available.")
 
-    st.info("After profiling, move to Task Detection to choose the target column and classify the problem type.")
+    st.info("Next: open Task Detection.")

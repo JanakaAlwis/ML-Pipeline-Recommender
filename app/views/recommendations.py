@@ -5,9 +5,9 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from app.streamlit_app import render_header
 from src.application_state import has_profile, has_task_detection, initialize_session_state
 from src.recommendation_engine import recommend_pipelines
-from app.streamlit_app import render_header
 
 
 def render() -> None:
@@ -17,9 +17,9 @@ def render() -> None:
 
     render_header(
         "Pipeline Recommendations",
-        "Review explainable pipeline candidates for the detected task.",
+        "Review pipeline candidates for the detected task.",
         "Select a pipeline, then continue to training.",
-        "The recommendation explains why the pipeline is a good match for the dataset.",
+        "This page shows the most suitable pipeline options.",
     )
 
     if not has_profile(st.session_state):
@@ -30,7 +30,7 @@ def render() -> None:
         st.warning("Please detect the task type first.")
         return
 
-    st.write("Review the recommended pipelines and choose one to continue.")
+    st.write("Review the recommended pipelines and choose one.")
 
     if st.button("Generate Recommendations"):
         recommendation_result = recommend_pipelines(
@@ -48,8 +48,7 @@ def render() -> None:
     if recommendation_result is None:
         st.markdown(
             """
-            ### Placeholder content
-            Generate recommendations to see the top pipeline candidates here.
+            Generate recommendations to see the top pipeline candidates.
             """
         )
         return
@@ -86,7 +85,7 @@ def render() -> None:
         ]
     )
 
-    st.subheader("Top 3 Pipelines")
+    st.subheader("Top pipelines")
     st.dataframe(summary_table, use_container_width=True)
 
     detail_left, detail_right, detail_third = st.columns(3)
@@ -94,7 +93,7 @@ def render() -> None:
     detail_right.metric("Confidence", f"{selected_pipeline.confidence_score:.2f}")
     detail_third.metric("Complexity", selected_pipeline.estimated_training_complexity)
 
-    st.subheader("Selected Pipeline Details")
+    st.subheader("Selected pipeline")
     st.write(f"Confidence: {selected_pipeline.confidence_score}")
     st.write(f"Evidence: {selected_pipeline.evidence}")
     st.write(f"Advantages: {selected_pipeline.advantages}")
@@ -102,4 +101,4 @@ def render() -> None:
     st.write(f"Preprocessing steps: {selected_pipeline.preprocessing_steps}")
     st.write(f"Model family: {selected_pipeline.recommended_model_family}")
 
-    st.info("After choosing a pipeline, move to Training to fit it on the uploaded dataset.")
+    st.info("Next: open Training.")

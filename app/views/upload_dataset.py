@@ -5,9 +5,9 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from app.streamlit_app import render_header
 from src.application_state import initialize_session_state, reset_workflow_state
 from src.data_loader import load_csv
-from app.streamlit_app import render_header
 
 
 def render() -> None:
@@ -19,10 +19,10 @@ def render() -> None:
         "Upload Dataset",
         "Load a CSV file to start the workflow.",
         "After upload, generate a dataset profile.",
-        "A valid dataset becomes the shared input for all later steps.",
+        "The uploaded dataframe is used by all later steps.",
     )
 
-    st.info("Only CSV files are supported. The uploaded dataset will be stored in session state and downstream results will be cleared.")
+    st.write("Upload a CSV file to start.")
 
     uploaded_file = st.file_uploader(
         "Choose a CSV file",
@@ -38,8 +38,7 @@ def render() -> None:
         st.rerun()
 
     if uploaded_file is None:
-        st.markdown("#### What to do next")
-        st.write("Choose a CSV file to load the dataset and reset any previous workflow state.")
+        st.info("Choose a CSV file, then continue to Dataset Profile.")
         return
 
     load_result = load_csv(uploaded_file)
@@ -68,5 +67,4 @@ def render() -> None:
     })
     st.dataframe(column_types, use_container_width=True)
 
-    st.subheader("Next step")
-    st.write("Go to Dataset Profile to inspect missing values, feature types, and dataset quality patterns.")
+    st.info("Next: open Dataset Profile.")

@@ -6,18 +6,18 @@ from pathlib import Path
 
 
 APP_DIR = Path(__file__).resolve().parents[1] / "app"
-PAGE_DIR = APP_DIR / "pages"
+VIEW_DIR = APP_DIR / "views"
 EXPECTED_FILES = [
     APP_DIR / "streamlit_app.py",
-    PAGE_DIR / "home.py",
-    PAGE_DIR / "upload_dataset.py",
-    PAGE_DIR / "dataset_profile.py",
-    PAGE_DIR / "task_detection.py",
-    PAGE_DIR / "recommendations.py",
-    PAGE_DIR / "training.py",
-    PAGE_DIR / "evaluation.py",
-    PAGE_DIR / "explainability.py",
-    PAGE_DIR / "report.py",
+    VIEW_DIR / "home.py",
+    VIEW_DIR / "upload_dataset.py",
+    VIEW_DIR / "dataset_profile.py",
+    VIEW_DIR / "task_detection.py",
+    VIEW_DIR / "recommendations.py",
+    VIEW_DIR / "training.py",
+    VIEW_DIR / "evaluation.py",
+    VIEW_DIR / "explainability.py",
+    VIEW_DIR / "report.py",
 ]
 
 EXPECTED_SESSION_STATE_KEYS = [

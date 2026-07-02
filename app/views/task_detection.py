@@ -5,9 +5,9 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from app.streamlit_app import render_header
 from src.application_state import has_dataset, has_profile, initialize_session_state
 from src.task_detector import detect_task_type
-from app.streamlit_app import render_header
 
 
 def render() -> None:
@@ -17,9 +17,9 @@ def render() -> None:
 
     render_header(
         "Task Detection",
-        "Select the target column and determine whether the problem is classification or regression.",
+        "Select the target column and determine the task type.",
         "After detection, generate pipeline recommendations.",
-        "The detected task determines the downstream models, metrics, and preprocessing strategy.",
+        "The task type controls the later recommendation, training, and evaluation steps.",
     )
 
     if not has_dataset(st.session_state):
@@ -35,7 +35,7 @@ def render() -> None:
         st.warning("Please upload a dataset first.")
         return
 
-    st.write("Select the target column to detect whether the task is classification or regression.")
+    st.write("Select the target column and detect the task type.")
     selected_target_column = st.selectbox(
         "Target column",
         options=list(dataframe.columns),
@@ -65,10 +65,8 @@ def render() -> None:
         st.write(f"Confidence: {task_result.confidence}")
         st.write(f"Target column: {task_result.target_column}")
         st.write(f"Target dtype: {task_result.target_dtype}")
-        st.write(f"Unique count: {task_result.target_unique_count}")
-        st.write(f"Unique ratio: {task_result.target_unique_ratio}")
         st.write(f"Detection reason: {task_result.detection_reason}")
         if task_result.alternative_task_type is not None:
             st.write(f"Alternative task type: {task_result.alternative_task_type}")
 
-    st.info("If the task is classification, the system will recommend classification pipelines and metrics. If regression, it will switch to regression-specific options.")
+    st.info("Next: open Pipeline Recommendations.")

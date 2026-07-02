@@ -5,10 +5,10 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from app.streamlit_app import render_header
 from src.application_state import has_dataset, has_profile, has_task_detection, initialize_session_state
 from src.model_trainer import train_pipeline
 from src.pipeline_builder import build_pipeline
-from app.streamlit_app import render_header
 
 
 def render() -> None:
@@ -18,9 +18,9 @@ def render() -> None:
 
     render_header(
         "Training",
-        "Build and fit the selected pipeline on the uploaded dataset.",
+        "Build and fit the selected pipeline.",
         "After training, evaluate the model and inspect the results.",
-        "Training turns the recommendation into a fitted model that can be evaluated and explained.",
+        "This step turns the recommendation into a fitted model.",
     )
 
     if not has_dataset(st.session_state):
@@ -43,7 +43,7 @@ def render() -> None:
         st.warning("Please select a target column first.")
         return
 
-    st.write("Train the selected pipeline on the uploaded dataset.")
+    st.write("Train the selected pipeline.")
 
     if st.button("Train Selected Pipeline"):
         built_pipeline_result = build_pipeline(
@@ -83,9 +83,9 @@ def render() -> None:
             st.dataframe(cv_table, use_container_width=True)
             st.bar_chart(cv_table.set_index("fold"))
 
-        st.subheader("Training summary")
+            st.subheader("Training summary")
         st.write(f"Model: {training_result.model_name}")
         st.write(f"Scoring metric: {training_result.scoring_metric}")
         st.write(f"Train rows: {training_result.train_row_count}, Test rows: {training_result.test_row_count}")
 
-    st.info("Once training is complete, go to Evaluation to inspect model quality and predictions.")
+        st.info("Next: open Evaluation.")
