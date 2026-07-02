@@ -112,7 +112,7 @@ class PipelineBuilder:
                 raise PipelineConstructionError("No usable feature columns were found in the profile result.")
 
             model = _build_model(recommendation, task_result)
-            preprocessor = _build_preprocessor(recommendation, feature_columns, task_result)
+            preprocessor = _build_preprocessor(recommendation, feature_columns)
             use_smote = _should_use_smote(recommendation, task_result)
             include_pca = _should_include_pca(recommendation)
 
@@ -209,7 +209,6 @@ def _select_feature_columns(profile_result: DatasetProfileResult, task_result: T
 def _build_preprocessor(
     recommendation: PipelineRecommendation,
     feature_columns: dict[str, list[str]],
-    task_result: TaskDetectionResult,
 ) -> ColumnTransformer:
     """Build a ColumnTransformer for numeric, categorical, and boolean features."""
 

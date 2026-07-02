@@ -100,7 +100,7 @@ class RecommendationEngine:
 
     def __init__(self, knowledge_base: KnowledgeBase | None = None) -> None:
         self._knowledge_base = knowledge_base or KnowledgeBase()
-        self._cached_data = None
+        self._cached_data: Any | None = None
 
     def recommend(
         self,
