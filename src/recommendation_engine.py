@@ -18,7 +18,7 @@ from src.task_detector import TaskDetectionResult
 logger = logging.getLogger(__name__)
 
 ENGINE_VERSION = "1.0"
-TOP_PIPELINE_COUNT = 3
+TOP_PIPELINE_COUNT = 5
 SUPPORTED_TASK_TYPES = {"classification", "regression"}
 
 

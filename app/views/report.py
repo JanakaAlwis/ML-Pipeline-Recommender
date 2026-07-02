@@ -81,8 +81,12 @@ def render() -> None:
             st.error(error)
         return
 
-    for warning in report_result.warnings:
-        st.warning(warning)
+    st.success(report_result.messages[0] if report_result.messages else "Report generated successfully.")
+
+    if report_result.pdf_bytes is not None:
+        st.info("PDF report is ready for download.")
+    else:
+        st.info("PDF export is currently unavailable. You can still download the Markdown report.")
 
     st.subheader("Markdown report")
     st.markdown(report_result.markdown_report or "No report content available.")

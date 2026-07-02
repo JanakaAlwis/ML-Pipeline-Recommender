@@ -125,6 +125,7 @@ def test_successful_markdown_report_generation() -> None:
     assert result.markdown_report is not None
     assert "## Dataset Summary" in result.markdown_report
     assert "## Conclusion" in result.markdown_report
+    assert "Target column: target" in result.markdown_report
 
 
 def test_successful_pdf_bytes_generation_or_graceful_fallback() -> None:
@@ -147,7 +148,7 @@ def test_successful_pdf_bytes_generation_or_graceful_fallback() -> None:
         assert result.pdf_bytes.startswith(b"%PDF")
     else:
         assert result.pdf_bytes is None
-        assert any("PDF generation" in warning or "reportlab" in warning.lower() for warning in result.warnings)
+        assert any("PDF export is currently unavailable" in warning for warning in result.warnings)
 
 
 def test_missing_optional_explainability() -> None:
@@ -168,6 +169,73 @@ def test_missing_optional_explainability() -> None:
     assert result.markdown_report is not None
     assert "Explainability Summary" in result.report_sections
     assert any("Explainability result was not available" in warning for warning in result.warnings)
+
+
+def test_target_column_prefers_training_result_then_task_result() -> None:
+    """Report generation should prefer the training target column, then the task target column."""
+
+    profile_result, task_result, recommendation_result, training_result, evaluation_result, explainability_result = _trained_workflow_results()
+    training_result.target_column = "Attack Type"
+    task_result.target_column = "Task Target"
+    profile_result.target_column = "Profile Target"
+
+    result = generate_report(
+        profile_result,
+        task_result,
+        recommendation_result,
+        training_result,
+        evaluation_result,
+        explainability_result=explainability_result,
+        include_pdf=False,
+    )
+
+    assert result.success is True
+    assert "Target column: Attack Type" in result.markdown_report
+
+
+def test_target_column_falls_back_to_task_result() -> None:
+    """Report generation should fall back to the task result target column."""
+
+    profile_result, task_result, recommendation_result, training_result, evaluation_result, explainability_result = _trained_workflow_results()
+    training_result.target_column = None
+    task_result.target_column = "Attack Type"
+    profile_result.target_column = "Profile Target"
+
+    result = generate_report(
+        profile_result,
+        task_result,
+        recommendation_result,
+        training_result,
+        evaluation_result,
+        explainability_result=explainability_result,
+        include_pdf=False,
+    )
+
+    assert result.success is True
+    assert "Target column: Attack Type" in result.markdown_report
+
+
+def test_report_never_contains_target_column_none() -> None:
+    """Generated report should not contain Target column: None."""
+
+    profile_result, task_result, recommendation_result, training_result, evaluation_result, explainability_result = _trained_workflow_results()
+    training_result.target_column = None
+    task_result.target_column = None
+    profile_result.target_column = None
+
+    result = generate_report(
+        profile_result,
+        task_result,
+        recommendation_result,
+        training_result,
+        evaluation_result,
+        explainability_result=explainability_result,
+        include_pdf=False,
+    )
+
+    assert result.success is True
+    assert "Target column: None" not in result.markdown_report
+    assert "Target column: Not specified" in result.markdown_report
 
 
 def test_failure_when_required_inputs_are_missing() -> None:

@@ -42,6 +42,34 @@
     "complexity_label": "medium"
   },
   {
+    "archetype_id": "knn_classification",
+    "name": "KNN Classification Pipeline",
+    "task_type": "classification",
+    "goal": "Provide a simple nearest-neighbor classification option for structured tabular data.",
+    "preferred_preprocessing": ["imputation", "encoding", "scaling"],
+    "preferred_model_families": ["knn", "decision_tree"],
+    "typical_metrics": ["accuracy", "precision", "recall", "f1_score"],
+    "when_to_use": ["Small to medium datasets", "Nonlinear class boundaries"],
+    "when_not_to_use": ["Very large datasets", "Need for very fast prediction at scale"],
+    "advantages": ["Easy to explain", "Can capture local patterns"],
+    "limitations": ["Sensitive to scaling", "Can be slower on large datasets"],
+    "complexity_label": "low"
+  },
+  {
+    "archetype_id": "naive_bayes_classification",
+    "name": "Naive Bayes Classification Pipeline",
+    "task_type": "classification",
+    "goal": "Provide a fast probabilistic baseline for tabular classification problems.",
+    "preferred_preprocessing": ["imputation", "encoding"],
+    "preferred_model_families": ["gaussiannb", "logisticregression"],
+    "typical_metrics": ["accuracy", "precision", "recall", "f1_score"],
+    "when_to_use": ["Need a fast baseline", "Moderate feature independence"],
+    "when_not_to_use": ["Strong dependency between features", "Need for complex nonlinear patterns"],
+    "advantages": ["Very fast to train", "Simple to explain"],
+    "limitations": ["Assumes feature independence", "May underperform on complex data"],
+    "complexity_label": "low"
+  },
+  {
     "archetype_id": "balanced_linear_regression",
     "name": "Balanced Linear Regression Pipeline",
     "task_type": "regression",
@@ -54,6 +82,34 @@
     "advantages": ["Simple and explainable", "Fast to train"],
     "limitations": ["May underfit nonlinear data", "Sensitive to feature scaling"],
     "complexity_label": "low"
+  },
+  {
+    "archetype_id": "svr_regression",
+    "name": "Support Vector Regression Pipeline",
+    "task_type": "regression",
+    "goal": "Model nonlinear regression relationships with a margin-based approach.",
+    "preferred_preprocessing": ["imputation", "encoding", "scaling"],
+    "preferred_model_families": ["svr", "ridge"],
+    "typical_metrics": ["mae", "rmse", "r2"],
+    "when_to_use": ["Nonlinear relationships", "Need a compact regression baseline"],
+    "when_not_to_use": ["Very large datasets", "Need for very fast training"],
+    "advantages": ["Can model nonlinear patterns", "Works well with scaling"],
+    "limitations": ["Can be slower to train", "Sensitive to preprocessing choices"],
+    "complexity_label": "medium"
+  },
+  {
+    "archetype_id": "ensemble_regression",
+    "name": "Random Forest Regression Pipeline",
+    "task_type": "regression",
+    "goal": "Provide a flexible ensemble regression option for structured data.",
+    "preferred_preprocessing": ["imputation", "encoding", "optional_scaling"],
+    "preferred_model_families": ["randomforestregressor", "decisiontreeregressor"],
+    "typical_metrics": ["mae", "rmse", "r2"],
+    "when_to_use": ["Nonlinear patterns", "Mixed feature types", "Need a strong baseline"],
+    "when_not_to_use": ["Need for a very simple linear model only"],
+    "advantages": ["Flexible", "Handles complex patterns"],
+    "limitations": ["Can be less interpretable", "Can overfit if not controlled"],
+    "complexity_label": "medium"
   },
   {
     "archetype_id": "robust_tree_regression",

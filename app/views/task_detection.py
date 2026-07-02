@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from app.streamlit_app import render_header
+from app.streamlit_app import render_header, render_wrapped_key_value_table, render_wrapped_table
 from src.application_state import has_dataset, has_profile, initialize_session_state
 from src.task_detector import detect_task_type
 
@@ -47,7 +47,7 @@ def render() -> None:
     target_counts = dataframe[selected_target_column].value_counts(dropna=False).head(20)
     target_table = target_counts.rename_axis("value").reset_index(name="count")
     st.subheader("Target distribution")
-    st.dataframe(target_table, use_container_width=True)
+    render_wrapped_table(target_table)
     if not target_counts.empty:
         st.bar_chart(target_counts)
 
@@ -61,12 +61,15 @@ def render() -> None:
             return
 
         st.success("Task type detected successfully.")
-        st.write(f"Task type: {task_result.task_type}")
-        st.write(f"Confidence: {task_result.confidence}")
-        st.write(f"Target column: {task_result.target_column}")
-        st.write(f"Target dtype: {task_result.target_dtype}")
-        st.write(f"Detection reason: {task_result.detection_reason}")
+        detail_rows: list[tuple[str, object]] = [
+            ("Task type", task_result.task_type),
+            ("Confidence", task_result.confidence),
+            ("Target column", task_result.target_column),
+            ("Target dtype", task_result.target_dtype),
+            ("Detection reason", task_result.detection_reason),
+        ]
         if task_result.alternative_task_type is not None:
-            st.write(f"Alternative task type: {task_result.alternative_task_type}")
+            detail_rows.append(("Alternative task type", task_result.alternative_task_type))
+        render_wrapped_key_value_table(detail_rows)
 
     st.info("Next: open Pipeline Recommendations.")

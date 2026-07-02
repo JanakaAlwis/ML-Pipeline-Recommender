@@ -6,10 +6,12 @@ connected in later phases.
 
 from __future__ import annotations
 
+import html
 from pathlib import Path
 import sys
 from typing import Callable
 
+import pandas as pd
 import streamlit as st
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -115,6 +117,39 @@ def render_header(page_title: str, page_description: str, next_step: str | None 
 		st.info(f"Next step: {next_step}")
 	if result_meaning is not None:
 		st.write(f"What this means: {result_meaning}")
+
+
+def _format_table_value(value: object) -> str:
+	"""Format a table value so long text and lists wrap cleanly."""
+
+	if value is None:
+		return "Not specified"
+	if isinstance(value, list):
+		if not value:
+			return "Not specified"
+		return "<br>".join(html.escape(str(item)) for item in value)
+	if pd.isna(value):
+		return "Not specified"
+	return html.escape(str(value)).replace("\n", "<br>")
+
+
+def render_wrapped_table(table: pd.DataFrame, *, hide_index: bool = False) -> None:
+	"""Render a table whose cells wrap instead of truncating long text."""
+
+	wrapped_table = table.copy()
+	for column in wrapped_table.columns:
+		wrapped_table[column] = wrapped_table[column].map(_format_table_value)
+
+	index_html = "" if hide_index else "<th> </th>"
+	table_html = wrapped_table.to_html(index=not hide_index, escape=False, classes="wrapped-table")
+	st.markdown(table_html, unsafe_allow_html=True)
+
+
+def render_wrapped_key_value_table(rows: list[tuple[str, object]]) -> None:
+	"""Render a two-column key-value table with wrapping cells."""
+
+	frame = pd.DataFrame(rows, columns=["Field", "Value"])
+	render_wrapped_table(frame, hide_index=True)
 
 
 def _workflow_step_states() -> list[tuple[str, bool]]:
@@ -291,6 +326,18 @@ def main() -> None:
 			}
 			section[data-testid="stSidebar"] {
 				padding-top: 0.5rem;
+			}
+			.wrapped-table {
+				width: 100%;
+				table-layout: fixed;
+				border-collapse: collapse;
+			}
+			.wrapped-table th,
+			.wrapped-table td {
+				white-space: normal !important;
+				overflow-wrap: anywhere;
+				word-break: break-word;
+				vertical-align: top;
 			}
 		</style>
 		""",

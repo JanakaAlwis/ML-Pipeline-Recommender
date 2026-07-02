@@ -178,8 +178,8 @@ def test_recommend_pipelines_generates_three_classification_pipelines() -> None:
 
     assert result.success is True
     assert result.task_type == "classification"
-    assert len(result.top_pipelines) == 3
-    assert [pipeline.pipeline_rank for pipeline in result.top_pipelines] == [1, 2, 3]
+    assert len(result.top_pipelines) == 5
+    assert [pipeline.pipeline_rank for pipeline in result.top_pipelines] == [1, 2, 3, 4, 5]
     assert any("classification" in pipeline.pipeline_name.lower() for pipeline in result.top_pipelines)
 
 
@@ -201,8 +201,8 @@ def test_recommend_pipelines_generates_three_regression_pipelines() -> None:
 
     assert result.success is True
     assert result.task_type == "regression"
-    assert len(result.top_pipelines) == 3
-    assert [pipeline.pipeline_rank for pipeline in result.top_pipelines] == [1, 2, 3]
+    assert len(result.top_pipelines) == 5
+    assert [pipeline.pipeline_rank for pipeline in result.top_pipelines] == [1, 2, 3, 4, 5]
     assert any("regression" in pipeline.pipeline_name.lower() for pipeline in result.top_pipelines)
 
 
@@ -375,8 +375,8 @@ def test_recommend_pipelines_returns_ranked_pipelines() -> None:
 
     confidences = [pipeline.confidence_score for pipeline in result.top_pipelines]
     assert confidences == sorted(confidences, reverse=True)
-    assert [pipeline.priority for pipeline in result.top_pipelines] == [1, 2, 3]
-    assert [pipeline.pipeline_rank for pipeline in result.top_pipelines] == [1, 2, 3]
+    assert [pipeline.priority for pipeline in result.top_pipelines] == [1, 2, 3, 4, 5]
+    assert [pipeline.pipeline_rank for pipeline in result.top_pipelines] == [1, 2, 3, 4, 5]
 
 
 def test_recommend_pipelines_confidence_scores_are_between_zero_and_one() -> None:

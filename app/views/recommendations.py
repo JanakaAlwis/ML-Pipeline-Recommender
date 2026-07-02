@@ -5,9 +5,59 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from app.streamlit_app import render_header
+from app.streamlit_app import render_header, render_wrapped_key_value_table, render_wrapped_table
 from src.application_state import has_profile, has_task_detection, initialize_session_state
 from src.recommendation_engine import recommend_pipelines
+
+
+def _format_model_name(model_family: str) -> str:
+    """Convert a model-family identifier into a readable ML model name."""
+
+    normalized = model_family.replace("_", " ").strip().lower()
+    mapping = {
+        "logistic regression": "Logistic Regression",
+        "random forest": "Random Forest",
+        "decision tree": "Decision Tree",
+        "knn": "KNN",
+        "k neighbors": "KNN",
+        "naive bayes": "Naive Bayes",
+        "svm": "SVM",
+        "support vector machine": "SVM",
+        "linear regression": "Linear Regression",
+        "ridge": "Ridge",
+        "lasso": "Lasso",
+        "polynomial regression": "Polynomial Regression",
+        "random forest regressor": "Random Forest Regressor",
+        "logisticregression": "Logistic Regression",
+        "randomforest": "Random Forest",
+        "decisiontree": "Decision Tree",
+        "kneighborsclassifier": "KNN",
+        "gaussiannb": "Naive Bayes",
+        "linearregression": "Linear Regression",
+        "randomforestregressor": "Random Forest Regressor",
+        "decisiontreeregressor": "Decision Tree Regressor",
+    }
+    return mapping.get(normalized, model_family.replace("_", " ").title())
+
+
+def _explainability_rating(pipeline: object) -> str:
+    """Return a simple explainability rating for a recommendation."""
+
+    model_name = getattr(pipeline, "recommended_model_family", "").lower()
+    if any(keyword in model_name for keyword in ["tree", "linear", "ridge", "lasso", "logistic", "naive", "knn"]):
+        return "High"
+    if any(keyword in model_name for keyword in ["svm", "randomforest"]):
+        return "Medium"
+    return "Low"
+
+
+def _why_recommended(pipeline: object) -> str:
+    """Create a short explanation for why the pipeline is recommended."""
+
+    explanation = getattr(pipeline, "explanation", "") or "This pipeline matches the detected task and dataset characteristics."
+    if explanation.endswith("."):
+        return explanation
+    return f"{explanation}."
 
 
 def render() -> None:
@@ -58,7 +108,7 @@ def render() -> None:
             st.error(error)
         return
 
-    top_pipelines = recommendation_result.top_pipelines[:3]
+    top_pipelines = recommendation_result.top_pipelines[:5]
     if not top_pipelines:
         st.warning("No pipeline recommendations were generated.")
         return
@@ -78,27 +128,38 @@ def render() -> None:
                 "Rank": pipeline.pipeline_rank,
                 "Pipeline": pipeline.pipeline_name,
                 "Task": pipeline.task_type,
+                "ML Model": _format_model_name(pipeline.recommended_model_family),
+                "Why Recommended": _why_recommended(pipeline),
+                "Explainability": _explainability_rating(pipeline),
                 "Confidence": pipeline.confidence_score,
                 "Complexity": pipeline.estimated_training_complexity,
             }
             for pipeline in top_pipelines
         ]
-    )
+    )[
+        ["Rank", "Pipeline", "Task", "ML Model", "Why Recommended", "Explainability", "Confidence", "Complexity"]
+    ]
 
-    st.subheader("Top pipelines")
-    st.dataframe(summary_table, use_container_width=True)
+    st.subheader("Top 5 pipelines")
+    render_wrapped_table(summary_table)
 
     detail_left, detail_right, detail_third = st.columns(3)
     detail_left.metric("Selected rank", selected_pipeline.pipeline_rank)
     detail_right.metric("Confidence", f"{selected_pipeline.confidence_score:.2f}")
     detail_third.metric("Complexity", selected_pipeline.estimated_training_complexity)
 
-    st.subheader("Selected pipeline")
-    st.write(f"Confidence: {selected_pipeline.confidence_score}")
-    st.write(f"Evidence: {selected_pipeline.evidence}")
-    st.write(f"Advantages: {selected_pipeline.advantages}")
-    st.write(f"Limitations: {selected_pipeline.limitations}")
-    st.write(f"Preprocessing steps: {selected_pipeline.preprocessing_steps}")
-    st.write(f"Model family: {selected_pipeline.recommended_model_family}")
+    st.subheader("Selected pipeline summary")
+    render_wrapped_key_value_table(
+        [
+            ("Pipeline Name", selected_pipeline.pipeline_name),
+            ("ML Model", _format_model_name(selected_pipeline.recommended_model_family)),
+            ("Confidence", f"{selected_pipeline.confidence_score:.2f}"),
+            ("Why Recommended", _why_recommended(selected_pipeline)),
+            ("Advantages", selected_pipeline.advantages),
+            ("Limitations", selected_pipeline.limitations),
+            ("Preprocessing Steps", selected_pipeline.preprocessing_steps),
+            ("Expected Evaluation Metrics", selected_pipeline.evaluation_metrics),
+        ]
+    )
 
     st.info("Next: open Training.")

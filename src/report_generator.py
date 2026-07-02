@@ -83,11 +83,11 @@ def generate_report(
             pdf_bytes = _build_pdf_bytes(markdown_report)
         except Exception as exc:  # pragma: no cover - optional dependency path
             logger.warning("PDF generation failed: %s", exc)
-            warnings.append(f"PDF generation was skipped: {exc}")
+            warnings.append("PDF export is currently unavailable. You can still download the Markdown report.")
 
     messages = ["Report generated successfully."]
     if pdf_bytes is not None:
-        messages.append("PDF output is available.")
+        messages.append("PDF report is ready for download.")
 
     return ReportResult(
         success=True,
@@ -140,10 +140,18 @@ def _build_report_sections(
 
     sections: dict[str, str] = {}
     sections["Title"] = "Explainable ML Pipeline Recommendation System\nBachelor's Thesis Prototype"
-    sections["Dataset Summary"] = _build_dataset_summary(profile_result)
+    sections["Dataset Summary"] = _build_dataset_summary(
+        profile_result=profile_result,
+        task_result=task_result,
+        training_result=training_result,
+    )
     sections["Task Detection Summary"] = _build_task_summary(task_result)
     sections["Recommended Pipelines"] = _build_recommendation_summary(recommendation_result)
-    sections["Training Results"] = _build_training_summary(training_result)
+    sections["Training Results"] = _build_training_summary(
+        profile_result=profile_result,
+        task_result=task_result,
+        training_result=training_result,
+    )
     sections["Evaluation Results"] = _build_evaluation_summary(evaluation_result)
     sections["Explainability Summary"] = _build_explainability_summary(explainability_result)
     sections["Limitations"] = _build_limitations_summary()
@@ -172,17 +180,27 @@ def _build_markdown_report(report_sections: dict[str, str]) -> str:
     return "\n".join(lines).strip()
 
 
-def _build_dataset_summary(profile_result: Any) -> str:
+def _build_dataset_summary(
+    *,
+    profile_result: Any,
+    task_result: Any,
+    training_result: Any,
+) -> str:
     """Summarize the profiled dataset."""
 
     numeric_columns = ", ".join(getattr(profile_result, "numeric_columns", []) or []) or "None"
     categorical_columns = ", ".join(getattr(profile_result, "categorical_columns", []) or []) or "None"
     boolean_columns = ", ".join(getattr(profile_result, "boolean_columns", []) or []) or "None"
     missing_count = sum(getattr(profile_result, "missing_values", {}).values())
+    target_column = _resolve_target_column(
+        training_result=training_result,
+        task_result=task_result,
+        profile_result=profile_result,
+    )
     return (
         f"Rows: {getattr(profile_result, 'row_count', 'N/A')}\n\n"
         f"Columns: {getattr(profile_result, 'column_count', 'N/A')}\n\n"
-        f"Target column: {getattr(profile_result, 'target_column', 'N/A')}\n\n"
+        f"Target column: {target_column}\n\n"
         f"Numeric features: {numeric_columns}\n\n"
         f"Categorical features: {categorical_columns}\n\n"
         f"Boolean features: {boolean_columns}\n\n"
@@ -194,7 +212,9 @@ def _build_dataset_summary(profile_result: Any) -> str:
 def _build_task_summary(task_result: Any) -> str:
     """Summarize task detection output."""
 
+    target_column = _resolve_target_column(task_result=task_result)
     return (
+        f"Target column: {target_column}\n\n"
         f"Task type: {getattr(task_result, 'task_type', 'N/A')}\n\n"
         f"Confidence: {getattr(task_result, 'confidence', 'N/A')}\n\n"
         f"Detection reason: {getattr(task_result, 'detection_reason', 'N/A')}\n\n"
@@ -224,15 +244,25 @@ def _build_recommendation_summary(recommendation_result: Any) -> str:
     return "\n".join(lines)
 
 
-def _build_training_summary(training_result: Any) -> str:
+def _build_training_summary(
+    *,
+    profile_result: Any,
+    task_result: Any,
+    training_result: Any,
+) -> str:
     """Summarize the training result."""
 
     scores = getattr(training_result, "cross_validation_scores", []) or []
     score_text = ", ".join(f"{score:.3f}" for score in scores) if scores else "Not available"
+    target_column = _resolve_target_column(
+        training_result=training_result,
+        task_result=task_result,
+        profile_result=profile_result,
+    )
     return (
         f"Model: {getattr(training_result, 'model_name', 'N/A')}\n\n"
         f"Task type: {getattr(training_result, 'task_type', 'N/A')}\n\n"
-        f"Target column: {getattr(training_result, 'target_column', 'N/A')}\n\n"
+        f"Target column: {target_column}\n\n"
         f"Training time (seconds): {getattr(training_result, 'training_time_seconds', 'N/A')}\n\n"
         f"Scoring metric: {getattr(training_result, 'scoring_metric', 'N/A')}\n\n"
         f"Cross-validation scores: {score_text}\n\n"
@@ -296,6 +326,23 @@ def _build_conclusion_summary(evaluation_result: Any) -> str:
         f"The workflow completed with a {getattr(evaluation_result, 'quality_rating', 'N/A')} model result. "
         "The final report combines the dataset profile, task detection, pipeline recommendation, training, evaluation, and explainability outputs into one thesis-friendly summary."
     )
+
+
+def _resolve_target_column(
+    *,
+    training_result: Any | None = None,
+    task_result: Any | None = None,
+    profile_result: Any | None = None,
+) -> str:
+    """Resolve the target column using the configured fallback order."""
+
+    for result in (training_result, task_result, profile_result):
+        if result is None:
+            continue
+        target_column = getattr(result, "target_column", None)
+        if target_column:
+            return str(target_column)
+    return "Not specified"
 
 
 def _build_pdf_bytes(markdown_report: str) -> bytes:
