@@ -11,6 +11,8 @@ import io
 import logging
 from typing import Any
 
+from src.missing_value_analysis import build_missing_value_overview
+
 logger = logging.getLogger(__name__)
 
 
@@ -152,6 +154,7 @@ def _build_report_sections(
         task_result=task_result,
         training_result=training_result,
     )
+    sections["Missing Value Handling"] = _build_missing_value_handling_summary(profile_result, training_result)
     sections["Evaluation Results"] = _build_evaluation_summary(evaluation_result)
     sections["Explainability Summary"] = _build_explainability_summary(explainability_result)
     sections["Limitations"] = _build_limitations_summary()
@@ -168,6 +171,7 @@ def _build_markdown_report(report_sections: dict[str, str]) -> str:
         "Task Detection Summary",
         "Recommended Pipelines",
         "Training Results",
+        "Missing Value Handling",
         "Evaluation Results",
         "Explainability Summary",
         "Limitations",
@@ -269,6 +273,54 @@ def _build_training_summary(
         f"Mean CV score: {getattr(training_result, 'mean_cv_score', 'N/A')}\n\n"
         f"Std CV score: {getattr(training_result, 'std_cv_score', 'N/A')}"
     )
+
+
+def _build_missing_value_handling_summary(profile_result: Any, training_result: Any) -> str:
+    """Summarize the missing-value handling used for the workflow."""
+
+    overview = build_missing_value_overview(profile_result)
+    train_rows = int(getattr(training_result, "train_row_count", 0) or 0)
+    test_rows = int(getattr(training_result, "test_row_count", 0) or 0)
+    final_training_size = train_rows + test_rows
+    original_rows = int(getattr(profile_result, "row_count", 0) or 0)
+    rows_removed_missing_target = max(original_rows - final_training_size, 0)
+
+    if not overview["has_missing_values"]:
+        return (
+            "No missing values were detected. No missing value handling was required.\n\n"
+            f"Rows removed because of missing target values: {rows_removed_missing_target}\n\n"
+            f"Final dataset size used for training: {final_training_size}"
+        )
+
+    analysis_frame = overview["analysis_frame"]
+    lines = [
+        "Missing values were detected in the dataset.",
+        "",
+        f"Detected missing values: {overview['total_missing_values']}",
+        f"Affected columns: {', '.join(overview['columns']) if overview['columns'] else 'Not specified'}",
+        f"Features recommended for dropping: {', '.join(overview['drop_feature_columns']) if overview['drop_feature_columns'] else 'None'}",
+        f"Features imputed: {', '.join(overview['imputed_feature_columns']) if overview['imputed_feature_columns'] else 'None'}",
+        f"Rows removed because of missing target values: {rows_removed_missing_target}",
+        f"Final dataset size used for training: {final_training_size}",
+        "",
+        "Missing percentages and actions:",
+    ]
+    for _, row in analysis_frame.iterrows():
+        reason = row.get("Reason", "")
+        reason_text = f" ({reason})" if reason else ""
+        lines.append(
+            f"- {row['Column']}: {row['Missing percentage']} missing, recommended action {row['Recommended action']}, "
+            f"applied action {row['Applied action during preprocessing']}{reason_text}"
+        )
+
+    lines.extend(
+        [
+            "",
+            f"Recommended strategy: {overview['strategy_summary']}",
+            f"Explanation: {overview['explanation']}",
+        ]
+    )
+    return "\n".join(lines)
 
 
 def _build_evaluation_summary(evaluation_result: Any) -> str:

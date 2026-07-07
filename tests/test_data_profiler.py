@@ -145,6 +145,17 @@ def test_profile_dataset_counts_missing_values_correctly() -> None:
     assert result.missing_percentages["b"] == 66.6667
 
 
+def test_profile_dataset_missing_value_warning_threshold() -> None:
+    """Columns above the missing-value warning threshold should produce a warning."""
+
+    df = pd.DataFrame({"a": [1, None, None, None, 5], "b": [1, 2, 3, 4, 5]})
+
+    result = profile_dataset(df)
+
+    assert any("High missingness" in warning for warning in result.warnings)
+    assert result.missing_percentages["a"] >= MISSING_VALUE_WARNING_THRESHOLD * 100.0
+
+
 def test_profile_dataset_counts_duplicate_rows_correctly() -> None:
     """Duplicate rows should be counted correctly."""
 

@@ -171,6 +171,52 @@ def test_missing_optional_explainability() -> None:
     assert any("Explainability result was not available" in warning for warning in result.warnings)
 
 
+def test_report_includes_missing_value_handling_section() -> None:
+    """The Markdown report should include the missing-value handling summary."""
+
+    profile_result, task_result, recommendation_result, training_result, evaluation_result, explainability_result = _trained_workflow_results()
+    profile_result.missing_values["age"] = 2
+    profile_result.missing_percentages["age"] = 25.0
+    profile_result.missing_values["city"] = 7
+    profile_result.missing_percentages["city"] = 87.5
+
+    result = generate_report(
+        profile_result,
+        task_result,
+        recommendation_result,
+        training_result,
+        evaluation_result,
+        explainability_result=explainability_result,
+        include_pdf=False,
+    )
+
+    assert result.success is True
+    assert "## Missing Value Handling" in result.markdown_report
+    assert "Missing values were detected in the dataset." in result.markdown_report
+    assert "Features recommended for dropping: city" in result.markdown_report
+    assert "recommended action Drop Feature" in result.markdown_report
+    assert "Rows removed because of missing target values" in result.markdown_report
+
+
+def test_report_mentions_no_missing_value_handling_when_dataset_is_clean() -> None:
+    """A clean dataset should be described as not requiring missing-value handling."""
+
+    profile_result, task_result, recommendation_result, training_result, evaluation_result, explainability_result = _trained_workflow_results()
+
+    result = generate_report(
+        profile_result,
+        task_result,
+        recommendation_result,
+        training_result,
+        evaluation_result,
+        explainability_result=explainability_result,
+        include_pdf=False,
+    )
+
+    assert result.success is True
+    assert "No missing values were detected. No missing value handling was required." in result.markdown_report
+
+
 def test_target_column_prefers_training_result_then_task_result() -> None:
     """Report generation should prefer the training target column, then the task target column."""
 

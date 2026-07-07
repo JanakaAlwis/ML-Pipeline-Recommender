@@ -8,6 +8,7 @@ import streamlit as st
 from app.streamlit_app import render_header
 from src.application_state import has_dataset, initialize_session_state
 from src.data_profiler import profile_dataset
+from src.missing_value_analysis import build_high_missingness_warnings, build_missing_value_analysis_frame, build_missing_value_overview
 
 
 def render() -> None:
@@ -66,14 +67,27 @@ def render() -> None:
         st.subheader("Column types")
         st.dataframe(feature_types_table, use_container_width=True)
 
-        missing_values_table = pd.DataFrame(
-            list(profile_result.missing_values.items()),
-            columns=["column", "missing_count"],
-        )
-        st.subheader("Missing values")
-        st.dataframe(missing_values_table, use_container_width=True)
-        if not missing_values_table.empty and missing_values_table["missing_count"].sum() > 0:
-            st.bar_chart(missing_values_table.set_index("column"))
+        missing_value_overview = build_missing_value_overview(profile_result)
+        st.subheader("Missing Value Analysis")
+        if missing_value_overview["has_missing_values"]:
+            missing_summary_left, missing_summary_right = st.columns(2)
+            missing_summary_left.metric("Total missing values", missing_value_overview["total_missing_values"])
+            missing_summary_right.metric("Affected columns", missing_value_overview["affected_column_count"])
+            st.write(missing_value_overview["strategy_summary"])
+            st.caption(missing_value_overview["explanation"])
+            missing_values_table = build_missing_value_analysis_frame(profile_result)
+            visible_columns = [
+                "Column",
+                "Data type",
+                "Missing percentage",
+                "Recommended action",
+                "Applied action during preprocessing",
+            ]
+            st.dataframe(missing_values_table[visible_columns], use_container_width=True, hide_index=True)
+            for warning_message in build_high_missingness_warnings(profile_result):
+                st.warning(warning_message)
+        else:
+            st.info("No missing values were detected. No missing value handling was required.")
 
         st.subheader("Duplicates")
         st.write(profile_result.duplicate_row_count)

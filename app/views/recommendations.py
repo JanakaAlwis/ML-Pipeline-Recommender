@@ -7,6 +7,7 @@ import streamlit as st
 
 from app.streamlit_app import render_header, render_wrapped_key_value_table, render_wrapped_table
 from src.application_state import has_profile, has_task_detection, initialize_session_state
+from src.missing_value_analysis import build_missing_value_overview
 from src.recommendation_engine import recommend_pipelines
 
 
@@ -112,6 +113,36 @@ def render() -> None:
     if not top_pipelines:
         st.warning("No pipeline recommendations were generated.")
         return
+
+    missing_value_overview = build_missing_value_overview(st.session_state["profile_result"])
+    st.subheader("Missing Value Handling")
+    if missing_value_overview["has_missing_values"]:
+        st.warning(
+            "Missing values were detected in the dataset. Imputation is recommended before model training to ensure reliable model performance."
+        )
+        st.write(missing_value_overview["strategy_summary"])
+        st.caption(missing_value_overview["explanation"])
+        with st.expander("View missing value handling details"):
+            analysis_frame = missing_value_overview["analysis_frame"]
+            visible_columns = [
+                "Column",
+                "Data type",
+                "Missing percentage",
+                "Recommended action",
+                "Applied action during preprocessing",
+            ]
+            render_wrapped_table(analysis_frame[visible_columns], hide_index=True)
+            render_wrapped_key_value_table(
+                [
+                    ("Detected missing values", "Yes"),
+                    ("Affected columns", missing_value_overview["columns"]),
+                    ("Features recommended for dropping", missing_value_overview["drop_feature_columns"] or ["None"]),
+                    ("Features recommended for imputation", missing_value_overview["imputed_feature_columns"] or ["None"]),
+                    ("Features recommended for review", missing_value_overview["review_feature_columns"] or ["None"]),
+                ]
+            )
+    else:
+        st.info("No missing values were detected. Missing value handling is not required.")
 
     pipeline_options = {pipeline.pipeline_name: pipeline for pipeline in top_pipelines}
     selected_name = st.selectbox(

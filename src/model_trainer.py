@@ -90,6 +90,20 @@ class ModelTrainer:
             X = dataframe.drop(columns=[target_column])
             y = dataframe[target_column]
 
+            warnings: list[str] = []
+            missing_target_rows = int(y.isna().sum())
+            if missing_target_rows > 0:
+                valid_target_mask = y.notna()
+                X = X.loc[valid_target_mask]
+                y = y.loc[valid_target_mask]
+                warnings.append(
+                    f"Removed {missing_target_rows} row(s) because the target column contains missing values. "
+                    "Only target-missing rows were removed; feature-missing rows are handled in preprocessing."
+                )
+
+            if len(y) < 2:
+                raise InvalidTrainingInputError("Not enough rows remain after removing missing target values.")
+
             stratify = _build_stratify_target(task_type, y)
             train_test_kwargs: dict[str, Any] = {
                 "test_size": 0.2,
@@ -104,7 +118,6 @@ class ModelTrainer:
 
             scoring_metric = _get_scoring_metric(task_type)
             cross_validation_scores: list[float] = []
-            warnings: list[str] = []
 
             if run_cross_validation:
                 cv, cv_warning = _build_cross_validation(task_type, y_train)

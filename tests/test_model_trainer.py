@@ -253,6 +253,19 @@ def test_no_cross_validation_mode() -> None:
     assert result.std_cv_score is None
 
 
+def test_rows_with_missing_target_are_removed_before_split() -> None:
+    """Rows with missing target values should be removed before train/test split."""
+
+    dataframe = _classification_data().copy()
+    dataframe.loc[0, "target"] = None
+
+    result = train_pipeline(_built_result("classification", "logistic_regression"), dataframe, "target", "classification", run_cross_validation=False)
+
+    assert result.success is True
+    assert (result.train_row_count or 0) + (result.test_row_count or 0) == len(dataframe) - 1
+    assert any("target column contains missing values" in warning.lower() for warning in result.warnings)
+
+
 def test_smote_pipeline_trains_for_classification() -> None:
     """A pipeline with SMOTE should still train for classification."""
 

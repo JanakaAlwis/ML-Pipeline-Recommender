@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 _NUMERIC_COLUMN_NAME = "numeric"
 _CATEGORICAL_COLUMN_NAME = "categorical"
 _BOOLEAN_COLUMN_NAME = "boolean"
+_DROP_FEATURE_MISSINGNESS_THRESHOLD = 50.0
 
 
 @dataclass(slots=True)
@@ -190,19 +191,32 @@ def _select_feature_columns(profile_result: DatasetProfileResult, task_result: T
     """Select feature columns, excluding the target column when present."""
 
     target_column = task_result.target_column
+    drop_columns = _columns_to_drop_by_missingness(profile_result)
     numeric_columns = _unique_preserve_order(
-        column for column in profile_result.numeric_columns if column != target_column
+        column for column in profile_result.numeric_columns if column != target_column and column not in drop_columns
     )
     categorical_columns = _unique_preserve_order(
-        column for column in profile_result.categorical_columns if column != target_column
+        column for column in profile_result.categorical_columns if column != target_column and column not in drop_columns
     )
     boolean_columns = _unique_preserve_order(
-        column for column in profile_result.boolean_columns if column != target_column
+        column for column in profile_result.boolean_columns if column != target_column and column not in drop_columns
     )
     return {
         _NUMERIC_COLUMN_NAME: numeric_columns,
         _CATEGORICAL_COLUMN_NAME: categorical_columns,
         _BOOLEAN_COLUMN_NAME: boolean_columns,
+    }
+
+
+def _columns_to_drop_by_missingness(profile_result: DatasetProfileResult) -> set[str]:
+    """Return feature columns whose missingness exceeds the drop threshold."""
+
+    missing_percentages = profile_result.missing_percentages or {}
+    target_column = profile_result.target_column
+    return {
+        column
+        for column, percentage in missing_percentages.items()
+        if column != target_column and float(percentage or 0.0) > _DROP_FEATURE_MISSINGNESS_THRESHOLD
     }
 
 

@@ -229,6 +229,22 @@ def test_scaler_selection_none() -> None:
     assert "scaler" not in numeric_pipeline.named_steps
 
 
+def test_columns_above_missingness_threshold_are_dropped_before_preprocessing() -> None:
+    """Features above 50% missingness should be excluded from preprocessor input columns."""
+
+    profile = _make_profile_result(task_type="classification")
+    profile.missing_percentages.update({"city": 78.23})
+    task = _make_task_result("classification")
+    recommendation = _make_recommendation(task_type="classification", model_name="logistic_regression")
+
+    result = build_pipeline(recommendation, profile, task)
+
+    assert result.success is True
+    preprocessor = result.pipeline.named_steps["preprocessor"]
+    categorical_columns = preprocessor.transformers[1][2]
+    assert "city" not in categorical_columns
+
+
 def test_pca_inclusion() -> None:
     """A PCA recommendation should add a PCA step."""
 
