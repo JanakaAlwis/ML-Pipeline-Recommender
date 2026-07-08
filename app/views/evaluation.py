@@ -12,6 +12,7 @@ from sklearn.model_selection import train_test_split
 
 from app.streamlit_app import render_header, render_wrapped_key_value_table, render_wrapped_table
 from src.application_state import has_dataset, has_task_detection, has_training_result, initialize_session_state
+from src.display_formatting import format_count, format_cv_score, format_metric
 from src.model_evaluator import evaluate_model
 
 
@@ -127,14 +128,14 @@ def _build_classification_metrics_table(
     """Build a concise classification metrics table."""
 
     metrics_rows = [
-        ("Accuracy", accuracy_score(y_true, y_pred)),
-        ("Precision (weighted)", precision_score(y_true, y_pred, average="weighted", zero_division=0)),
-        ("Recall (weighted)", recall_score(y_true, y_pred, average="weighted", zero_division=0)),
-        ("Macro F1", f1_score(y_true, y_pred, average="macro", zero_division=0)),
-        ("Weighted F1", f1_score(y_true, y_pred, average="weighted", zero_division=0)),
+        ("Accuracy", format_metric(accuracy_score(y_true, y_pred))),
+        ("Precision (weighted)", format_metric(precision_score(y_true, y_pred, average="weighted", zero_division=0))),
+        ("Recall (weighted)", format_metric(recall_score(y_true, y_pred, average="weighted", zero_division=0))),
+        ("Macro F1", format_metric(f1_score(y_true, y_pred, average="macro", zero_division=0))),
+        ("Weighted F1", format_metric(f1_score(y_true, y_pred, average="weighted", zero_division=0))),
     ]
     if roc_auc_value is not None:
-        metrics_rows.append(("ROC-AUC", roc_auc_value))
+        metrics_rows.append(("ROC-AUC", format_metric(roc_auc_value)))
 
     return pd.DataFrame(metrics_rows, columns=["Metric", "Value"])
 
@@ -147,7 +148,7 @@ def _build_regression_metrics_table(evaluation_result: Any) -> pd.DataFrame:
     rows = []
     for metric_name in ordered_metrics:
         if metric_name in regression_metrics:
-            rows.append((metric_name.upper() if metric_name != "r2" else "R²", regression_metrics[metric_name]))
+            rows.append((metric_name.upper() if metric_name != "r2" else "R²", format_metric(regression_metrics[metric_name])))
     return pd.DataFrame(rows, columns=["Metric", "Value"])
 
 
@@ -159,7 +160,12 @@ def _build_classification_report_frame(y_true: pd.Series, y_pred: pd.Series) -> 
     columns = [column for column in ["precision", "recall", "f1-score", "support"] if column in report_frame.columns]
     visible_rows = [index for index in report_frame.index if index not in {"accuracy"}]
     report_frame = report_frame.loc[visible_rows, columns]
-    return report_frame.round(3)
+    if "support" in report_frame.columns:
+        report_frame["support"] = report_frame["support"].map(format_count)
+    for column in ["precision", "recall", "f1-score"]:
+        if column in report_frame.columns:
+            report_frame[column] = report_frame[column].map(format_metric)
+    return report_frame
 
 
 def _build_confusion_matrix_frame(y_true: pd.Series, y_pred: pd.Series) -> pd.DataFrame:
@@ -227,10 +233,10 @@ def _evaluation_summary_rows(
     return [
         ("Model Name", getattr(training_result, "model_name", "N/A")),
         ("Learning Task", task_type or "N/A"),
-        ("Main Evaluation Score", f"{main_score:.3f}" if isinstance(main_score, (int, float)) else "N/A"),
-        ("Mean CV Score", f"{training_result.mean_cv_score:.3f}" if getattr(training_result, "mean_cv_score", None) is not None else "N/A"),
-        ("CV Standard Deviation", f"{training_result.std_cv_score:.3f}" if getattr(training_result, "std_cv_score", None) is not None else "N/A"),
-        ("Rows Evaluated", rows_evaluated or "N/A"),
+        ("Main Evaluation Score", format_metric(main_score)),
+        ("Mean CV Score", format_cv_score(getattr(training_result, "mean_cv_score", None))),
+        ("CV Standard Deviation", format_cv_score(getattr(training_result, "std_cv_score", None))),
+        ("Rows Evaluated", format_count(rows_evaluated)),
     ]
 
 
@@ -239,7 +245,7 @@ def _model_information_rows(training_result: Any, split_summary: dict[str, float
 
     train_rows = split_summary.get("train_row_count")
     test_rows = split_summary.get("test_row_count")
-    split_text = f"80/20 ({int(train_rows) if train_rows is not None else 'N/A'} train / {int(test_rows) if test_rows is not None else 'N/A'} test)"
+    split_text = f"80/20 ({format_count(train_rows)} train / {format_count(test_rows)} test)"
     return [
         ("Selected Algorithm", getattr(training_result, "model_name", "N/A")),
         ("Learning Task", getattr(training_result, "task_type", "N/A")),
@@ -305,9 +311,9 @@ def _render_generalization_section(split_summary: dict[str, float | str | None])
 
     st.subheader("Generalization Performance")
     summary_left, summary_middle, summary_right = st.columns(3)
-    summary_left.metric(f"Training score ({_metric_display_name(scoring_metric)})", f"{train_score:.3f}" if isinstance(train_score, (int, float)) else "N/A")
-    summary_middle.metric(f"Test score ({_metric_display_name(scoring_metric)})", f"{test_score:.3f}" if isinstance(test_score, (int, float)) else "N/A")
-    summary_right.metric("Generalization gap", f"{generalization_gap:.3f}" if isinstance(generalization_gap, (int, float)) else "N/A")
+    summary_left.metric(f"Training score ({_metric_display_name(scoring_metric)})", format_metric(train_score))
+    summary_middle.metric(f"Test score ({_metric_display_name(scoring_metric)})", format_metric(test_score))
+    summary_right.metric("Generalization gap", format_metric(generalization_gap))
 
     st.write(_interpret_generalization(generalization_gap if isinstance(generalization_gap, (int, float)) else None, scoring_metric if isinstance(scoring_metric, str) else None))
 
@@ -319,9 +325,9 @@ def _render_cross_validation_section(training_result: Any) -> None:
     st.subheader("Cross-Validation Summary")
 
     summary_left, summary_middle, summary_right = st.columns(3)
-    summary_left.metric("Mean CV score", f"{training_result.mean_cv_score:.3f}" if getattr(training_result, "mean_cv_score", None) is not None else "N/A")
-    summary_middle.metric("CV standard deviation", f"{training_result.std_cv_score:.3f}" if getattr(training_result, "std_cv_score", None) is not None else "N/A")
-    summary_right.metric("Number of folds", len(scores) if scores else "N/A")
+    summary_left.metric("Mean CV score", format_cv_score(getattr(training_result, "mean_cv_score", None)))
+    summary_middle.metric("CV standard deviation", format_cv_score(getattr(training_result, "std_cv_score", None)))
+    summary_right.metric("Number of folds", format_count(len(scores)) if scores else "N/A")
 
     with st.expander("Fold scores", expanded=False):
         fold_scores_table = _build_cross_validation_table(training_result)
@@ -336,10 +342,10 @@ def _render_interpretation(evaluation_result: Any, training_result: Any) -> None
 
     if getattr(evaluation_result, "task_type", None) == "regression":
         main_score = getattr(evaluation_result, "regression_metrics", {}).get("r2")
-        score_text = f"R² of {main_score:.3f}" if isinstance(main_score, (int, float)) else "an unavailable regression score"
+        score_text = f"R² of {format_metric(main_score)}"
     else:
         main_score = getattr(evaluation_result, "classification_metrics", {}).get("accuracy")
-        score_text = f"accuracy of {main_score:.3f}" if isinstance(main_score, (int, float)) else "an unavailable classification score"
+        score_text = f"accuracy of {format_metric(main_score)}"
 
     st.subheader("Interpretation")
     st.write(

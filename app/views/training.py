@@ -9,6 +9,7 @@ import streamlit as st
 
 from app.streamlit_app import render_header, render_wrapped_key_value_table, render_wrapped_table
 from src.application_state import has_dataset, has_profile, has_task_detection, initialize_session_state
+from src.display_formatting import format_count, format_cv_score, format_metric
 from src.model_trainer import train_pipeline
 from src.pipeline_builder import build_pipeline
 
@@ -94,11 +95,11 @@ def _training_summary_rows(training_result: Any, dataframe: pd.DataFrame, select
 
     scoring_metric = getattr(training_result, "scoring_metric", None)
     if getattr(training_result, "mean_cv_score", None) is not None:
-        cv_summary = f"Mean {_metric_display_name(scoring_metric)}: {training_result.mean_cv_score:.3f}"
+        cv_summary = f"Mean {_metric_display_name(scoring_metric)}: {format_cv_score(training_result.mean_cv_score)}"
         if getattr(training_result, "std_cv_score", None) is not None:
-            cv_summary = f"{cv_summary}; std: {training_result.std_cv_score:.3f}"
+            cv_summary = f"{cv_summary}; std: {format_cv_score(training_result.std_cv_score)}"
         if getattr(training_result, "cross_validation_scores", None):
-            cv_summary = f"{cv_summary}; folds: {len(training_result.cross_validation_scores)}"
+            cv_summary = f"{cv_summary}; folds: {format_count(len(training_result.cross_validation_scores))}"
     else:
         cv_summary = "Not available"
 
@@ -202,9 +203,9 @@ def render() -> None:
 
         st.subheader("Cross-validation summary")
         cv_summary_left, cv_summary_middle, cv_summary_right = st.columns(3)
-        cv_summary_left.metric("Mean CV score", f"{training_result.mean_cv_score:.3f}" if training_result.mean_cv_score is not None else "N/A")
-        cv_summary_middle.metric("CV standard deviation", f"{training_result.std_cv_score:.3f}" if training_result.std_cv_score is not None else "N/A")
-        cv_summary_right.metric("Number of folds", str(len(training_result.cross_validation_scores)) if training_result.cross_validation_scores else "N/A")
+        cv_summary_left.metric("Mean CV score", format_cv_score(training_result.mean_cv_score))
+        cv_summary_middle.metric("CV standard deviation", format_cv_score(training_result.std_cv_score))
+        cv_summary_right.metric("Number of folds", format_count(len(training_result.cross_validation_scores)) if training_result.cross_validation_scores else "N/A")
         st.write(f"Scoring metric used: {training_result.scoring_metric or 'N/A'}")
 
         with st.expander("View individual fold scores"):

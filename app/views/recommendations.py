@@ -7,6 +7,7 @@ import streamlit as st
 
 from app.streamlit_app import render_header, render_wrapped_key_value_table, render_wrapped_table
 from src.application_state import has_profile, has_task_detection, initialize_session_state
+from src.display_formatting import format_confidence
 from src.recommendation_engine import recommend_pipelines
 
 
@@ -147,7 +148,7 @@ def render() -> None:
                 "ML Model": _format_model_name(pipeline.recommended_model_family),
                 "Why Recommended": _why_recommended(pipeline),
                 "Explainability": _explainability_rating(pipeline),
-                "Confidence": pipeline.confidence_score,
+                "Confidence": format_confidence(pipeline.confidence_score),
                 "Complexity": pipeline.estimated_training_complexity,
             }
             for pipeline in top_pipelines
@@ -161,7 +162,7 @@ def render() -> None:
 
     detail_left, detail_right, detail_third = st.columns(3)
     detail_left.metric("Selected rank", selected_pipeline.pipeline_rank)
-    detail_right.metric("Confidence", f"{selected_pipeline.confidence_score:.2f}")
+    detail_right.metric("Confidence", format_confidence(selected_pipeline.confidence_score))
     detail_third.metric("Complexity", selected_pipeline.estimated_training_complexity)
 
     st.subheader("Selected pipeline summary")
@@ -169,7 +170,7 @@ def render() -> None:
         [
             ("Pipeline Name", selected_pipeline.pipeline_name),
             ("ML Model", _format_model_name(selected_pipeline.recommended_model_family)),
-            ("Confidence", f"{selected_pipeline.confidence_score:.2f}"),
+            ("Confidence", format_confidence(selected_pipeline.confidence_score)),
             ("Why Recommended", _why_recommended(selected_pipeline)),
             ("Advantages", selected_pipeline.advantages),
             ("Limitations", selected_pipeline.limitations),

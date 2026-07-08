@@ -15,6 +15,7 @@ from src.application_state import (
     has_training_result,
     initialize_session_state,
 )
+from src.display_formatting import format_cv_score, format_metric
 from src.explainability import SHAP_DEFAULT_SAMPLE_SIZE, explain_model, generate_shap_explanation
 
 
@@ -54,13 +55,13 @@ def _metric_display_value(evaluation_result: object) -> tuple[str, str, str | No
         regression_metrics = getattr(evaluation_result, "regression_metrics", {}) or {}
         r2_value = regression_metrics.get("r2")
         rmse_value = regression_metrics.get("rmse")
-        primary_value = f"{r2_value:.3f}" if isinstance(r2_value, (int, float)) else "N/A"
-        secondary_text = f"RMSE: {rmse_value:.3f}" if isinstance(rmse_value, (int, float)) else None
+        primary_value = format_metric(r2_value)
+        secondary_text = f"RMSE: {format_metric(rmse_value)}" if isinstance(rmse_value, (int, float)) else None
         return "R²", primary_value, secondary_text
 
     classification_metrics = getattr(evaluation_result, "classification_metrics", {}) or {}
     accuracy_value = classification_metrics.get("accuracy")
-    primary_value = f"{accuracy_value:.3f}" if isinstance(accuracy_value, (int, float)) else "N/A"
+    primary_value = format_metric(accuracy_value)
     return "Accuracy", primary_value, None
 
 
@@ -69,7 +70,7 @@ def _mean_cv_score(training_result: object) -> str:
 
     mean_score = getattr(training_result, "mean_cv_score", None)
     if isinstance(mean_score, (int, float)):
-        return f"{mean_score:.3f}"
+        return format_cv_score(mean_score)
     return "N/A"
 
 

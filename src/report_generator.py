@@ -17,6 +17,7 @@ from sklearn.metrics import classification_report as sk_classification_report, c
 from sklearn.model_selection import train_test_split
 
 from src.missing_value_analysis import build_missing_value_overview
+from src.display_formatting import format_confidence, format_count, format_cv_score, format_metric, format_percentage, format_seconds
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +205,7 @@ def _build_report_data(
         [
             ("Target column", target_variable),
             ("Detected learning task", task_type),
-            ("Confidence", _format_numeric(getattr(task_result, "confidence", None), digits=3)),
+            ("Confidence", format_confidence(getattr(task_result, "confidence", None))),
             ("Detection reason", str(getattr(task_result, "detection_reason", "N/A") or "N/A")),
         ]
     )
@@ -396,9 +397,9 @@ def _build_training_summary(training_result: Any) -> list[tuple[str, str]]:
 
     rows: list[tuple[str, str]] = []
     scores = getattr(training_result, "cross_validation_scores", []) or []
-    rows.append(("Cross-validation score(s)", ", ".join(f"{score:.3f}" for score in scores) if scores else "Not available"))
-    rows.append(("Mean CV score", _format_numeric(getattr(training_result, "mean_cv_score", None), digits=3)))
-    rows.append(("Standard deviation", _format_numeric(getattr(training_result, "std_cv_score", None), digits=3)))
+    rows.append(("Cross-validation score(s)", ", ".join(format_cv_score(score) for score in scores) if scores else "Not available"))
+    rows.append(("Mean CV score", format_cv_score(getattr(training_result, "mean_cv_score", None))))
+    rows.append(("Standard deviation", format_cv_score(getattr(training_result, "std_cv_score", None))))
     rows.append(("Training time", _format_seconds(getattr(training_result, "training_time_seconds", None))))
     rows.append(("Selected hyperparameters", _selected_hyperparameters_text(training_result)))
     return rows
@@ -411,21 +412,21 @@ def _build_evaluation_summary(evaluation_result: Any, report_evaluation: dict[st
     summary = OrderedDict()
     metrics = getattr(evaluation_result, "classification_metrics", None)
     if metrics is not None:
-        summary["Accuracy"] = _format_numeric(metrics.get("accuracy"), digits=3)
-        summary["Precision"] = _format_numeric(metrics.get("precision_weighted"), digits=3)
-        summary["Recall"] = _format_numeric(metrics.get("recall_weighted"), digits=3)
-        summary["F1-score"] = _format_numeric(metrics.get("f1_weighted"), digits=3)
+        summary["Accuracy"] = format_metric(metrics.get("accuracy"))
+        summary["Precision"] = format_metric(metrics.get("precision_weighted"))
+        summary["Recall"] = format_metric(metrics.get("recall_weighted"))
+        summary["F1-score"] = format_metric(metrics.get("f1_weighted"))
     else:
         regression_metrics = getattr(evaluation_result, "regression_metrics", {}) or {}
-        summary["MAE"] = _format_numeric(regression_metrics.get("mae"), digits=3)
-        summary["MSE"] = _format_numeric(regression_metrics.get("mse"), digits=3)
-        summary["RMSE"] = _format_numeric(regression_metrics.get("rmse"), digits=3)
-        summary["R² Score"] = _format_numeric(regression_metrics.get("r2"), digits=3)
+        summary["MAE"] = format_metric(regression_metrics.get("mae"))
+        summary["MSE"] = format_metric(regression_metrics.get("mse"))
+        summary["RMSE"] = format_metric(regression_metrics.get("rmse"))
+        summary["R² Score"] = format_metric(regression_metrics.get("r2"))
 
     summary["Quality rating"] = str(getattr(evaluation_result, "quality_rating", "N/A") or "N/A")
     summary["Quality summary"] = str(getattr(evaluation_result, "quality_summary", "N/A") or "N/A")
     if report_evaluation.get("main_metric") is not None:
-        summary["Main evaluation score"] = _format_numeric(report_evaluation.get("main_metric"), digits=3)
+        summary["Main evaluation score"] = format_metric(report_evaluation.get("main_metric"))
     return summary
 
 
@@ -466,20 +467,20 @@ def _build_missing_value_handling_summary(profile_result: Any, training_result: 
     if not overview["has_missing_values"]:
         return (
             "No missing values were detected. No missing value handling was required.\n\n"
-            f"Rows removed because of missing target values: {rows_removed_missing_target}\n\n"
-            f"Final dataset size used for training: {final_training_size}"
+            f"Rows removed because of missing target values: {format_count(rows_removed_missing_target)}\n\n"
+            f"Final dataset size used for training: {format_count(final_training_size)}"
         )
 
     analysis_frame = overview["analysis_frame"]
     lines = [
         "Missing values were detected in the dataset.",
         "",
-        f"Detected missing values: {overview['total_missing_values']}",
+        f"Detected missing values: {format_count(overview['total_missing_values'])}",
         f"Affected columns: {', '.join(overview['columns']) if overview['columns'] else 'Not specified'}",
         f"Features recommended for dropping: {', '.join(overview['drop_feature_columns']) if overview['drop_feature_columns'] else 'None'}",
         f"Features imputed: {', '.join(overview['imputed_feature_columns']) if overview['imputed_feature_columns'] else 'None'}",
-        f"Rows removed because of missing target values: {rows_removed_missing_target}",
-        f"Final dataset size used for training: {final_training_size}",
+        f"Rows removed because of missing target values: {format_count(rows_removed_missing_target)}",
+        f"Final dataset size used for training: {format_count(final_training_size)}",
         "",
         "Missing percentages and actions:",
     ]
@@ -487,7 +488,7 @@ def _build_missing_value_handling_summary(profile_result: Any, training_result: 
         reason = row.get("Reason", "")
         reason_text = f" ({reason})" if reason else ""
         lines.append(
-            f"- {row['Column']}: {row['Missing percentage']} missing, recommended action {row['Recommended action']}, "
+            f"- {row['Column']}: {format_percentage(row['Missing percentage'])} missing, recommended action {row['Recommended action']}, "
             f"applied action {row['Applied action during preprocessing']}{reason_text}"
         )
 
@@ -555,10 +556,11 @@ def _build_report_evaluation(profile_result: Any, training_result: Any, evaluati
 
     y_true = pd.Series(test_target, dtype=float)
     y_pred = pd.Series(predictions, dtype=float)
+    mse = float(mean_squared_error(y_true, y_pred))
     regression_metrics = {
         "mae": float(mean_absolute_error(y_true, y_pred)),
-        "mse": float(mean_squared_error(y_true, y_pred)),
-        "rmse": float(mean_squared_error(y_true, y_pred, squared=False)),
+        "mse": mse,
+        "rmse": float(mse ** 0.5),
         "r2": float(r2_score(y_true, y_pred)),
     }
     return {
@@ -713,7 +715,7 @@ def _format_numeric(value: Any, *, digits: int = 3) -> str:
     """Format a numeric value for report display."""
 
     if isinstance(value, (int, float)):
-        return f"{value:.{digits}f}"
+        return f"{float(value):.{digits}f}"
     return "N/A"
 
 
@@ -722,7 +724,7 @@ def _format_seconds(value: Any) -> str:
     """Format seconds as a readable string."""
 
     if isinstance(value, (int, float)):
-        return f"{value:.3f} s"
+        return format_seconds(value)
     return "N/A"
 
 

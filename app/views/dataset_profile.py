@@ -9,6 +9,7 @@ import streamlit as st
 from app.streamlit_app import render_header
 from src.application_state import has_dataset, initialize_session_state
 from src.data_profiler import profile_dataset
+from src.display_formatting import format_count, format_percentage
 from src.missing_value_analysis import build_high_missingness_warnings, build_missing_value_analysis_frame, build_missing_value_overview
 
 
@@ -112,6 +113,82 @@ def _render_advanced_visualizations(profile_result: object) -> None:
                 st.plotly_chart(pairwise_plot, use_container_width=True)
 
 
+def _render_profile_results(profile_result: object) -> None:
+    """Render the generated dataset profile summary."""
+
+    st.success("Dataset profile generated successfully.")
+    profile_left, profile_right, profile_third = st.columns(3)
+    profile_left.metric("Rows", profile_result.row_count)
+    profile_right.metric("Columns", profile_result.column_count)
+    profile_third.metric("Duplicate rows", profile_result.duplicate_row_count)
+
+    feature_types_table = pd.DataFrame(
+        [
+            {"feature_type": "Numeric", "columns": ", ".join(profile_result.numeric_columns) or "None"},
+            {"feature_type": "Categorical", "columns": ", ".join(profile_result.categorical_columns) or "None"},
+            {"feature_type": "Boolean", "columns": ", ".join(profile_result.boolean_columns) or "None"},
+            {"feature_type": "Datetime", "columns": ", ".join(profile_result.datetime_columns) or "None"},
+        ]
+    )
+    st.subheader("Column types")
+    st.dataframe(feature_types_table, use_container_width=True)
+
+    missing_value_overview = build_missing_value_overview(profile_result)
+    st.subheader("Missing Value Analysis")
+    if missing_value_overview["has_missing_values"]:
+        missing_summary_left, missing_summary_right = st.columns(2)
+        missing_summary_left.metric("Total missing values", missing_value_overview["total_missing_values"])
+        missing_summary_right.metric("Affected columns", missing_value_overview["affected_column_count"])
+        st.write(missing_value_overview["strategy_summary"])
+        st.caption(missing_value_overview["explanation"])
+        missing_values_table = build_missing_value_analysis_frame(profile_result).copy()
+        if "Missing percentage" in missing_values_table.columns:
+            missing_values_table["Missing percentage"] = missing_values_table["Missing percentage"].map(format_percentage)
+        visible_columns = [
+            "Column",
+            "Data type",
+            "Missing percentage",
+            "Recommended action",
+            "Applied action during preprocessing",
+        ]
+        st.dataframe(missing_values_table[visible_columns], use_container_width=True, hide_index=True)
+        for warning_message in build_high_missingness_warnings(profile_result):
+            st.warning(warning_message)
+    else:
+        st.info("No missing values were detected. No missing value handling was required.")
+
+    st.subheader("Duplicates")
+    st.write(profile_result.duplicate_row_count)
+
+    high_correlation_pairs_table = pd.DataFrame(
+        profile_result.high_correlation_pairs,
+        columns=["column_1", "column_2", "correlation"],
+    )
+    if not high_correlation_pairs_table.empty:
+        high_correlation_pairs_table["correlation"] = high_correlation_pairs_table["correlation"].map(lambda value: f"{value:.4f}" if isinstance(value, (int, float)) else value)
+    st.subheader("High correlations")
+    st.dataframe(high_correlation_pairs_table, use_container_width=True)
+
+    outlier_counts_table = pd.DataFrame(
+        list(profile_result.outlier_counts.items()),
+        columns=["column", "outlier_count"],
+    )
+    st.subheader("Outliers")
+    st.dataframe(outlier_counts_table, use_container_width=True)
+
+    if profile_result.target_distribution is not None and not profile_result.target_distribution.empty:
+        st.subheader("Target distribution")
+        st.bar_chart(profile_result.target_distribution)
+
+    st.subheader("Sample rows")
+    if profile_result.sample_rows is not None:
+        st.dataframe(profile_result.sample_rows, use_container_width=True)
+    else:
+        st.write("No sample rows available.")
+
+    _render_advanced_visualizations(profile_result)
+
+
 def render() -> None:
     """Render the dataset profiling page."""
 
@@ -135,9 +212,9 @@ def render() -> None:
 
     st.subheader("Dataset overview")
     overview_left, overview_right, overview_third = st.columns(3)
-    overview_left.metric("Rows", dataframe.shape[0])
-    overview_right.metric("Columns", dataframe.shape[1])
-    overview_third.metric("Unique columns", len(dataframe.columns))
+    overview_left.metric("Rows", format_count(dataframe.shape[0]))
+    overview_right.metric("Columns", format_count(dataframe.shape[1]))
+    overview_third.metric("Unique columns", format_count(len(dataframe.columns)))
 
     st.write("Columns in the uploaded dataset:")
     st.dataframe(pd.DataFrame({"column": list(dataframe.columns)}), use_container_width=True)
@@ -151,72 +228,12 @@ def render() -> None:
                 st.error(error)
             return
 
-        st.success("Dataset profile generated successfully.")
-        profile_left, profile_right, profile_third = st.columns(3)
-        profile_left.metric("Rows", profile_result.row_count)
-        profile_right.metric("Columns", profile_result.column_count)
-        profile_third.metric("Duplicate rows", profile_result.duplicate_row_count)
-
-        feature_types_table = pd.DataFrame(
-            [
-                {"feature_type": "Numeric", "columns": ", ".join(profile_result.numeric_columns) or "None"},
-                {"feature_type": "Categorical", "columns": ", ".join(profile_result.categorical_columns) or "None"},
-                {"feature_type": "Boolean", "columns": ", ".join(profile_result.boolean_columns) or "None"},
-                {"feature_type": "Datetime", "columns": ", ".join(profile_result.datetime_columns) or "None"},
-            ]
-        )
-        st.subheader("Column types")
-        st.dataframe(feature_types_table, use_container_width=True)
-
-        missing_value_overview = build_missing_value_overview(profile_result)
-        st.subheader("Missing Value Analysis")
-        if missing_value_overview["has_missing_values"]:
-            missing_summary_left, missing_summary_right = st.columns(2)
-            missing_summary_left.metric("Total missing values", missing_value_overview["total_missing_values"])
-            missing_summary_right.metric("Affected columns", missing_value_overview["affected_column_count"])
-            st.write(missing_value_overview["strategy_summary"])
-            st.caption(missing_value_overview["explanation"])
-            missing_values_table = build_missing_value_analysis_frame(profile_result)
-            visible_columns = [
-                "Column",
-                "Data type",
-                "Missing percentage",
-                "Recommended action",
-                "Applied action during preprocessing",
-            ]
-            st.dataframe(missing_values_table[visible_columns], use_container_width=True, hide_index=True)
-            for warning_message in build_high_missingness_warnings(profile_result):
-                st.warning(warning_message)
+    profile_result = st.session_state.get("profile_result")
+    if profile_result is not None:
+        if not getattr(profile_result, "success", False):
+            for error in getattr(profile_result, "errors", []) or []:
+                st.error(error)
         else:
-            st.info("No missing values were detected. No missing value handling was required.")
-
-        st.subheader("Duplicates")
-        st.write(profile_result.duplicate_row_count)
-
-        high_correlation_pairs_table = pd.DataFrame(
-            profile_result.high_correlation_pairs,
-            columns=["column_1", "column_2", "correlation"],
-        )
-        st.subheader("High correlations")
-        st.dataframe(high_correlation_pairs_table, use_container_width=True)
-
-        outlier_counts_table = pd.DataFrame(
-            list(profile_result.outlier_counts.items()),
-            columns=["column", "outlier_count"],
-        )
-        st.subheader("Outliers")
-        st.dataframe(outlier_counts_table, use_container_width=True)
-
-        if profile_result.target_distribution is not None and not profile_result.target_distribution.empty:
-            st.subheader("Target distribution")
-            st.bar_chart(profile_result.target_distribution)
-
-        st.subheader("Sample rows")
-        if profile_result.sample_rows is not None:
-            st.dataframe(profile_result.sample_rows, use_container_width=True)
-        else:
-            st.write("No sample rows available.")
-
-        _render_advanced_visualizations(profile_result)
+            _render_profile_results(profile_result)
 
     st.info("Next: open Task Detection.")

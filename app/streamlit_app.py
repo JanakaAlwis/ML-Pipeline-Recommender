@@ -41,6 +41,18 @@ APP_SESSION_KEYS = [
 	"current_page",
 ]
 
+TRANSIENT_UI_KEYS = [
+	"uploaded_csv_file",
+	"task_detection_target_column",
+	"recommendations_selected_pipeline",
+	"profile_histogram_column",
+	"profile_scatter_x",
+	"profile_scatter_y",
+	"profile_pairwise_columns",
+	"report_markdown_result",
+	"shap_explanation_result",
+]
+
 PAGE_ORDER = [
 	"Home",
 	"Upload Dataset",
@@ -262,16 +274,54 @@ def _go_to_next_page() -> None:
 	st.rerun()
 
 
-def render_navigation_footer() -> None:
-	"""Render Previous and Next controls for all pages."""
+def _reset_workflow_and_go_home() -> None:
+	"""Clear workflow state and return to the start of the app."""
+
+	for key in APP_SESSION_KEYS:
+		if key != "current_page":
+			st.session_state[key] = None
+	for key in TRANSIENT_UI_KEYS:
+		st.session_state.pop(key, None)
+	st.session_state.current_page = "Home"
+	rst = st.session_state.get("report_result")
+	if rst is not None and hasattr(rst, "success"):
+		st.session_state["report_result"] = None
+	st.rerun()
+
+
+def render_navigation_footer(current_page: str | None = None) -> None:
+	"""Render page-aware workflow controls."""
+
+	page_name = current_page or st.session_state.current_page
 
 	st.divider()
+	if page_name == "Report":
+		prev_col, center_col, next_col = st.columns([1, 2, 1])
+		with prev_col:
+			if st.button("Previous", use_container_width=True):
+				_go_to_previous_page()
+		with center_col:
+			st.caption(f"Current page: {page_name}")
+		with next_col:
+			if st.button("Go to Home", use_container_width=True):
+				_reset_workflow_and_go_home()
+		return
+
+	if page_name == "Home":
+		_, center_col, next_col = st.columns([1, 2, 1])
+		with center_col:
+			st.caption(f"Current page: {page_name}")
+		with next_col:
+			if st.button("Next", use_container_width=True):
+				_go_to_next_page()
+		return
+
 	prev_col, center_col, next_col = st.columns([1, 2, 1])
 	with prev_col:
 		if st.button("Previous", use_container_width=True):
 			_go_to_previous_page()
 	with center_col:
-		st.caption(f"Current page: {st.session_state.current_page}")
+		st.caption(f"Current page: {page_name}")
 	with next_col:
 		if st.button("Next", use_container_width=True):
 			_go_to_next_page()
@@ -350,7 +400,7 @@ def main() -> None:
 	pages = _get_pages()
 	current_page = st.session_state.current_page
 	pages[current_page]()
-	render_navigation_footer()
+	render_navigation_footer(current_page)
 
 
 if __name__ == "__main__":
