@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pandas as pd
 import streamlit as st
 
 from app.streamlit_app import render_header
@@ -17,9 +16,9 @@ def render() -> None:
 
     render_header(
         "Upload Dataset",
-        "Load a CSV file to start the workflow.",
-        "After upload, generate a dataset profile.",
-        "The uploaded dataframe is used by all later steps.",
+        "Load and validate a CSV file to start the workflow.",
+        "A short preview confirms that the dataset loaded correctly.",
+        "Detailed dataset analysis is shown on the profiling page.",
     )
 
     st.write("Upload a CSV file to start.")
@@ -58,13 +57,7 @@ def render() -> None:
     summary_third.metric("Missing cells", int(load_result.dataframe.isna().sum().sum()))
 
     st.subheader("Dataset preview")
-    st.dataframe(load_result.dataframe.head(10), use_container_width=True)
-
-    st.subheader("Column types")
-    column_types = pd.DataFrame({
-        "column": load_result.dataframe.columns,
-        "dtype": [str(dtype) for dtype in load_result.dataframe.dtypes],
-    })
-    st.dataframe(column_types, use_container_width=True)
+    st.caption("First 5 rows only.")
+    st.dataframe(load_result.dataframe.head(5), use_container_width=True)
 
     st.info("Next: open Dataset Profile.")

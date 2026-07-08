@@ -263,10 +263,7 @@ def _render_classification_section(
 
     metrics_table = _build_classification_metrics_table(test_target, holdout_predictions, roc_auc_value)
     st.subheader("Classification Evaluation")
-    st.info(
-        "The evaluation metrics and confusion matrix are calculated using the testing dataset only. "
-        "Therefore, the number of evaluated records corresponds to the testing dataset rather than the original dataset."
-    )
+    st.caption("Metrics and the confusion matrix use the held-out test set.")
     render_wrapped_table(metrics_table, hide_index=True)
 
     detailed_metrics = _build_classification_report_frame(test_target, holdout_predictions)
@@ -291,10 +288,7 @@ def _render_regression_section(
     metrics_table = _build_regression_metrics_table(evaluation_result)
 
     st.subheader("Regression Evaluation")
-    st.info(
-        "The evaluation metrics are calculated using the testing dataset only. "
-        "Therefore, the number of evaluated records corresponds to the testing dataset rather than the original dataset."
-    )
+    st.caption("Metrics below use the held-out test set.")
     render_wrapped_table(metrics_table, hide_index=True)
     st.caption("Lower MAE, MSE, and RMSE are better. Higher R² is better.")
 
@@ -360,8 +354,8 @@ def render() -> None:
 
     render_header(
         "Evaluation",
-        "Review the fitted model using a concise hold-out based summary.",
-        "After evaluation, generate explainability results.",
+        "Review the fitted model using a concise hold-out summary.",
+        "Focus on results rather than training details.",
         "These metrics show how well the model performs on unseen data.",
     )
 
