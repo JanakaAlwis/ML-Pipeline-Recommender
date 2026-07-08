@@ -49,6 +49,7 @@ def render() -> None:
 
     reset_workflow_state(st.session_state)
     st.session_state["dataframe"] = load_result.dataframe
+    st.session_state["source_name"] = load_result.source_name
 
     st.success(f"Loaded '{load_result.source_name}' successfully.")
     summary_left, summary_right, summary_third = st.columns(3)

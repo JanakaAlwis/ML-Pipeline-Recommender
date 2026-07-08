@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib.util
 from dataclasses import fields
 
 import pandas as pd
@@ -126,29 +125,6 @@ def test_successful_markdown_report_generation() -> None:
     assert "## Dataset Summary" in result.markdown_report
     assert "## Conclusion" in result.markdown_report
     assert "Target column: target" in result.markdown_report
-
-
-def test_successful_pdf_bytes_generation_or_graceful_fallback() -> None:
-    """PDF output should be generated when possible or gracefully skipped."""
-
-    profile_result, task_result, recommendation_result, training_result, evaluation_result, explainability_result = _trained_workflow_results()
-    result = generate_report(
-        profile_result,
-        task_result,
-        recommendation_result,
-        training_result,
-        evaluation_result,
-        explainability_result=explainability_result,
-        include_pdf=True,
-    )
-
-    reportlab_available = importlib.util.find_spec("reportlab") is not None
-    if reportlab_available:
-        assert result.pdf_bytes is not None
-        assert result.pdf_bytes.startswith(b"%PDF")
-    else:
-        assert result.pdf_bytes is None
-        assert any("PDF export is currently unavailable" in warning for warning in result.warnings)
 
 
 def test_missing_optional_explainability() -> None:

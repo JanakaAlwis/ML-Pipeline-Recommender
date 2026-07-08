@@ -42,7 +42,7 @@ def render() -> None:
         "Report",
         "Generate a final thesis-style summary of the workflow.",
         "Use this page after training and evaluation are complete.",
-        "The report combines the workflow results into one Markdown summary.",
+        "The report combines the workflow results into a Markdown summary.",
     )
 
     missing_messages = _workflow_results_missing()
@@ -54,26 +54,29 @@ def render() -> None:
 
     st.write("Generate a final report from the completed workflow.")
 
-    if st.button("Generate Report"):
-        report_result = generate_report(
+    markdown_result = st.session_state.get("report_markdown_result")
+
+    if st.button("Generate Markdown Report", use_container_width=True):
+        markdown_result = generate_report(
             st.session_state.get("profile_result"),
             st.session_state.get("task_result"),
             st.session_state.get("recommendation_result"),
             st.session_state.get("training_result"),
             st.session_state.get("evaluation_result"),
             st.session_state.get("explainability_result"),
-            include_pdf=True,
+            include_pdf=False,
+            dataset_name=st.session_state.get("source_name"),
         )
-        if report_result.success:
-            st.session_state["report_result"] = report_result
-        else:
-            for error in report_result.errors:
+        st.session_state["report_markdown_result"] = markdown_result
+        st.session_state["report_result"] = markdown_result
+        if not markdown_result.success:
+            for error in markdown_result.errors:
                 st.error(error)
             return
 
-    report_result = st.session_state.get("report_result")
+    report_result = markdown_result or st.session_state.get("report_result")
     if report_result is None:
-        st.info("Generate the report to view the Markdown summary and download files.")
+        st.info("Generate the report to view the Markdown summary and download it.")
         return
 
     if not report_result.success:
@@ -82,11 +85,6 @@ def render() -> None:
         return
 
     st.success(report_result.messages[0] if report_result.messages else "Report generated successfully.")
-
-    if report_result.pdf_bytes is not None:
-        st.info("PDF report is ready for download.")
-    else:
-        st.info("PDF export is currently unavailable. You can still download the Markdown report.")
 
     st.subheader("Markdown report")
     st.markdown(report_result.markdown_report or "No report content available.")
@@ -99,11 +97,3 @@ def render() -> None:
         use_container_width=True,
     )
 
-    if report_result.pdf_bytes is not None:
-        st.download_button(
-            label="Download PDF",
-            data=report_result.pdf_bytes,
-            file_name="workflow_report.pdf",
-            mime="application/pdf",
-            use_container_width=True,
-        )

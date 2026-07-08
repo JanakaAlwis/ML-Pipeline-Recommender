@@ -27,6 +27,7 @@ APP_ICON = "🤖📊"
 
 APP_SESSION_KEYS = [
 	"dataframe",
+	"source_name",
 	"target_column",
 	"profile_result",
 	"task_result",

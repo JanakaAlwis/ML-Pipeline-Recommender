@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
-from app.streamlit_app import render_header, render_wrapped_table
+from app.streamlit_app import render_header, render_wrapped_key_value_table, render_wrapped_table
 from src.application_state import (
     has_dataset,
     has_evaluation_result,
@@ -14,7 +15,7 @@ from src.application_state import (
     has_training_result,
     initialize_session_state,
 )
-from src.explainability import explain_model
+from src.explainability import SHAP_DEFAULT_SAMPLE_SIZE, explain_model, generate_shap_explanation
 
 
 def _format_model_name(model_family: str) -> str:
@@ -190,6 +191,16 @@ def _feature_importance_table(top_features: list[tuple[str, float]]) -> pd.DataF
     return pd.DataFrame(rows, columns=["Rank", "Feature", "Importance Score", "Influence Level"])
 
 
+def _feature_importance_chart_frame(top_features: list[tuple[str, float]]) -> pd.DataFrame:
+    """Create a dataframe that is suitable for a horizontal bar chart."""
+
+    if not top_features:
+        return pd.DataFrame(columns=["Feature", "Importance"])
+
+    chart_frame = pd.DataFrame(top_features, columns=["Feature", "Importance"])
+    return chart_frame.sort_values("Importance", ascending=True)
+
+
 def _interpretation_text(top_features: list[tuple[str, float]]) -> str:
     """Build a short plain-English interpretation of the ranked features."""
 
@@ -210,6 +221,49 @@ def _interpretation_text(top_features: list[tuple[str, float]]) -> str:
     )
 
 
+def _pipeline_explanation_rows(selected_pipeline: object, task_result: object) -> list[tuple[str, object]]:
+    """Build a short beginner-friendly pipeline explanation table."""
+
+    preprocessing_steps = getattr(selected_pipeline, "preprocessing_steps", []) or []
+    preprocessing_text = ", ".join(str(step) for step in preprocessing_steps) if isinstance(preprocessing_steps, (list, tuple, set)) else str(preprocessing_steps)
+    model_name = _format_model_name(getattr(selected_pipeline, "recommended_model_family", ""))
+    if any(keyword in getattr(selected_pipeline, "recommended_model_family", "").lower() for keyword in ["tree", "forest", "xgb"]):
+        importance_text = "Intrinsic tree structure plus estimated permutation importance and optional SHAP"
+    else:
+        importance_text = "Estimated permutation importance; SHAP is not supported for this model"
+
+    return [
+        ("Selected Model", model_name),
+        ("Preprocessing", preprocessing_text or "Not specified"),
+        ("Why Explainable", "The pipeline is readable because preprocessing is explicit and feature importance can be inspected."),
+        ("Importance Method", importance_text),
+        ("Task Type", getattr(task_result, "task_type", "N/A")),
+    ]
+
+
+def _technical_detail_rows(explainability_result: object, shap_result: object | None) -> list[tuple[str, object]]:
+    """Build compact technical details for the expander."""
+
+    rows: list[tuple[str, object]] = [
+        ("Explainability method", getattr(explainability_result, "method_used", "N/A") or "N/A"),
+        ("Top features shown", len(getattr(explainability_result, "top_features", []) or [])),
+        ("Sample size used for feature importance", "Up to 5,000 rows"),
+    ]
+
+    if shap_result is None:
+        rows.append(("SHAP status", "Not generated yet"))
+        return rows
+
+    rows.extend(
+        [
+            ("SHAP status", "Success" if getattr(shap_result, "success", False) else "Unavailable"),
+            ("SHAP sample size", getattr(shap_result, "sample_size", "N/A") or "N/A"),
+            ("SHAP method", getattr(shap_result, "method_used", "N/A") or "N/A"),
+        ]
+    )
+    return rows
+
+
 def render() -> None:
     """Render the explainability page."""
 
@@ -218,8 +272,8 @@ def render() -> None:
     render_header(
         "Explainability",
         "Show why the pipeline was recommended and how the trained model behaves.",
-        "Review the pipeline reasoning, feature importance, and a concise interpretation.",
-        "This page demonstrates explainability at the pipeline level and the model level.",
+        "Review the pipeline reasoning, feature importance, and optional SHAP.",
+        "This page keeps explainability compact and beginner-friendly.",
     )
 
     if not has_dataset(st.session_state):
@@ -259,26 +313,26 @@ def render() -> None:
     st.write("Generate the explanation for the trained model.")
 
     if st.button("Generate Explainability"):
-        explainability_result = explain_model(training_result, st.session_state["dataframe"], st.session_state["target_column"], task_result.task_type)
+        explainability_result = explain_model(
+            training_result,
+            st.session_state["dataframe"],
+            st.session_state["target_column"],
+            task_result.task_type,
+        )
         st.session_state["explainability_result"] = explainability_result
+        st.session_state.pop("shap_explanation_result", None)
 
         if not explainability_result.success:
-            for error in explainability_result.errors:
-                st.error(error)
+            st.warning(explainability_result.errors[0] if explainability_result.errors else "Explainability could not be generated.")
             return
 
     explainability_result = st.session_state.get("explainability_result")
     if explainability_result is None:
-        st.markdown(
-            """
-            Generate explainability to see feature importance.
-            """
-        )
+        st.info("Generate explainability to see feature importance and optional SHAP output.")
         return
 
     if not explainability_result.success:
-        for error in explainability_result.errors:
-            st.error(error)
+        st.warning(explainability_result.errors[0] if explainability_result.errors else "Feature importance could not be generated.")
         return
 
     primary_metric_label, primary_metric_value, secondary_metric_text = _metric_display_value(evaluation_result)
@@ -294,45 +348,95 @@ def render() -> None:
     if secondary_metric_text is not None:
         st.caption(secondary_metric_text)
 
-    summary_table = pd.DataFrame(
+    st.subheader("Explainability Summary")
+    render_wrapped_key_value_table(
         [
-            ["Selected Pipeline", selected_pipeline.pipeline_name],
-            ["Machine Learning Model", _format_model_name(selected_pipeline.recommended_model_family)],
-            ["Task Type", task_result.task_type],
-            [primary_metric_label, primary_metric_value],
-            ["Cross Validation Score", _mean_cv_score(training_result)],
-            ["Training Time", _training_time(training_result)],
-        ],
-        columns=["Field", "Value"],
+            ("Selected Pipeline", selected_pipeline.pipeline_name),
+            ("Machine Learning Model", _format_model_name(selected_pipeline.recommended_model_family)),
+            ("Task Type", task_result.task_type),
+            (primary_metric_label, primary_metric_value),
+            ("Cross Validation Score", _mean_cv_score(training_result)),
+            ("Training Time", _training_time(training_result)),
+        ]
     )
-    st.subheader("Model Summary")
-    render_wrapped_table(summary_table, hide_index=True)
 
-    st.subheader("Pipeline Explainability")
-    st.markdown("**Pipeline Recommendation Reason**")
-    for reason in _recommendation_reason_items(profile_result, selected_pipeline, task_result):
-        st.markdown(f"- {reason}")
+    st.subheader("Pipeline Explanation")
+    render_wrapped_key_value_table(_pipeline_explanation_rows(selected_pipeline, task_result))
+    st.caption("Feature importance is estimated with permutation importance. SHAP is optional and only available for supported tree-based models.")
 
     st.subheader("Feature Importance")
-    st.write(explainability_result.explanation_summary)
+    st.write("Feature importance shows which input features changed the model output the most when they were varied in the sampled data.")
 
     if explainability_result.top_features:
-        top_features_df = pd.DataFrame(explainability_result.top_features, columns=["Feature", "Importance"])
-        display_table = _feature_importance_table(explainability_result.top_features)
-
-        st.subheader("Top Influential Features")
-        st.bar_chart(top_features_df.set_index("Feature"))
+        top_features = explainability_result.top_features[:10]
+        display_table = _feature_importance_table(top_features)
+        chart_frame = _feature_importance_chart_frame(top_features)
+        if not chart_frame.empty:
+            feature_chart = px.bar(
+                chart_frame,
+                x="Importance",
+                y="Feature",
+                orientation="h",
+                text_auto=".3f",
+                title="Top Features",
+            )
+            feature_chart.update_layout(margin={"l": 10, "r": 10, "t": 40, "b": 10}, yaxis_title="", xaxis_title="Importance")
+            st.plotly_chart(feature_chart, use_container_width=True)
         render_wrapped_table(display_table, hide_index=True)
+    else:
+        st.info("Feature importance could not be calculated for this model. A SHAP explanation may still be available for supported models.")
 
-        st.subheader("Interpretation")
-        st.write(_interpretation_text(explainability_result.top_features))
+    st.subheader("SHAP Explanation")
+    st.warning("SHAP explanations may take time for large datasets. A sample of the data will be used.")
 
-    st.info(
-        "Why this system is explainable\n\n"
-        "Level 1 - Pipeline Explainability\n"
-        "The system explains why a particular machine learning pipeline was recommended based on dataset characteristics.\n\n"
-        "Level 2 - Model Explainability\n"
-        "The system explains which features most influenced the trained model using feature importance analysis."
-    )
+    shap_sample_size = st.slider("SHAP sample size", min_value=50, max_value=1000, value=SHAP_DEFAULT_SAMPLE_SIZE, step=50)
+    shap_result = st.session_state.get("shap_explanation_result")
+
+    if st.button("Generate SHAP Explanation"):
+        shap_result = generate_shap_explanation(
+            training_result,
+            st.session_state["dataframe"],
+            st.session_state["target_column"],
+            task_result.task_type,
+            sample_size=shap_sample_size,
+        )
+        st.session_state["shap_explanation_result"] = shap_result
+
+        if not shap_result.success:
+            st.warning(shap_result.errors[0] if shap_result.errors else "SHAP explanation is not available for this model. Feature importance is shown instead.")
+
+    shap_result = st.session_state.get("shap_explanation_result")
+    if shap_result is not None and shap_result.success:
+        st.caption(shap_result.explanation_summary or "")
+        if shap_result.warnings:
+            for warning in shap_result.warnings:
+                st.caption(warning)
+
+        shap_features_df = pd.DataFrame(shap_result.top_features, columns=["Feature", "SHAP Importance"])
+        shap_features_df = shap_features_df.sort_values("SHAP Importance", ascending=True)
+        shap_chart = px.bar(
+            shap_features_df,
+            x="SHAP Importance",
+            y="Feature",
+            orientation="h",
+            text_auto=".3f",
+            title="Top SHAP Features",
+        )
+        shap_chart.update_layout(margin={"l": 10, "r": 10, "t": 40, "b": 10}, yaxis_title="", xaxis_title="SHAP Importance")
+        st.plotly_chart(shap_chart, use_container_width=True)
+        st.write(shap_result.interpretation)
+    elif shap_result is not None and not shap_result.success:
+        st.info(shap_result.errors[0] if shap_result.errors else "SHAP explanation is not available for this model. Feature importance is shown instead.")
+    else:
+        st.info("Run SHAP only if you want an additional optional explanation for a supported model.")
+
+    st.subheader("Top Feature Interpretation")
+    st.write(_interpretation_text(explainability_result.top_features))
+
+    with st.expander("Technical Details", expanded=False):
+        render_wrapped_key_value_table(_technical_detail_rows(explainability_result, shap_result))
+        st.write("Pipeline reason summary:")
+        for reason in _recommendation_reason_items(profile_result, selected_pipeline, task_result):
+            st.markdown(f"- {reason}")
 
     st.info("Next: open Report.")

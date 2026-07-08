@@ -44,7 +44,7 @@ def render() -> None:
                 "Streamlit",
                 "Pandas",
                 "Scikit-learn",
-                "SHAP",
+                "SHAP: optional model explanation for supported models",
                 "Plotly/Matplotlib",
                 "Pytest",
             ]
