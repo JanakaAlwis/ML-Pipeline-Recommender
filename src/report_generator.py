@@ -14,8 +14,6 @@ from typing import Any
 
 import pandas as pd
 from sklearn.metrics import classification_report as sk_classification_report, confusion_matrix as sk_confusion_matrix, mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import train_test_split
-
 from src.missing_value_analysis import build_missing_value_overview
 from src.display_formatting import format_confidence, format_count, format_cv_score, format_metric, format_percentage, format_seconds
 
@@ -514,28 +512,15 @@ def _build_conclusion_summary(evaluation_result: Any) -> str:
 def _build_report_evaluation(profile_result: Any, training_result: Any, evaluation_result: Any) -> dict[str, Any]:
     """Reconstruct evaluation details for the report without changing evaluation logic."""
 
-    dataframe = getattr(profile_result, "dataframe", None)
-    target_column = _resolve_target_column(training_result=training_result, profile_result=profile_result)
     task_type = getattr(evaluation_result, "task_type", None) or getattr(training_result, "task_type", None)
-    if dataframe is None or not target_column or target_column not in dataframe.columns:
-        return {"main_metric": None, "classification_report": None, "confusion_matrix": None}
-
-    features = dataframe.drop(columns=[target_column])
-    target = dataframe[target_column]
-
-    stratify = None
-    if task_type == "classification":
-        class_counts = target.dropna().value_counts()
-        if len(class_counts) >= 2 and class_counts.min() >= 2:
-            stratify = target
-
-    train_features, test_features, _, test_target = train_test_split(
-        features,
-        target,
-        test_size=0.2,
-        random_state=42,
-        stratify=stratify,
-    )
+    train_features = getattr(training_result, "train_features", None)
+    test_features = getattr(training_result, "test_features", None)
+    train_target = getattr(training_result, "train_target", None)
+    test_target = getattr(training_result, "test_target", None)
+    if any(value is None for value in (train_features, test_features, train_target, test_target)):
+        raise ValueError("Training result does not contain the cleaned hold-out split required for report generation.")
+    if len(test_features) != len(test_target):
+        raise ValueError("Stored hold-out features and target values must have matching lengths.")
 
     pipeline = getattr(training_result, "trained_pipeline", None)
     if pipeline is None:
@@ -543,10 +528,15 @@ def _build_report_evaluation(profile_result: Any, training_result: Any, evaluati
 
     predictions = pipeline.predict(test_features)
     if task_type == "classification":
-        labels = sorted(pd.unique(pd.concat([pd.Series(test_target), pd.Series(predictions)])))
-        report = pd.DataFrame(sk_classification_report(test_target, predictions, output_dict=True, zero_division=0)).transpose().reset_index()
+        y_true_series = pd.Series(test_target).reset_index(drop=True)
+        y_pred_series = pd.Series(predictions).reset_index(drop=True)
+        valid_mask = y_true_series.notna() & y_pred_series.notna()
+        y_true_series = y_true_series.loc[valid_mask].reset_index(drop=True)
+        y_pred_series = y_pred_series.loc[valid_mask].reset_index(drop=True)
+        labels = sorted(pd.unique(pd.concat([y_true_series, y_pred_series], ignore_index=True).dropna()).tolist(), key=lambda value: str(value))
+        report = pd.DataFrame(sk_classification_report(y_true_series, y_pred_series, output_dict=True, zero_division=0)).transpose().reset_index()
         report.rename(columns={"index": "Label"}, inplace=True)
-        matrix = pd.DataFrame(sk_confusion_matrix(test_target, predictions, labels=labels), index=[str(label) for label in labels], columns=[str(label) for label in labels])
+        matrix = pd.DataFrame(sk_confusion_matrix(y_true_series, y_pred_series, labels=labels), index=[str(label) for label in labels], columns=[str(label) for label in labels])
         main_metric = getattr(evaluation_result, "classification_metrics", {}) or {}
         return {
             "main_metric": main_metric.get("accuracy"),
@@ -554,8 +544,11 @@ def _build_report_evaluation(profile_result: Any, training_result: Any, evaluati
             "confusion_matrix": matrix,
         }
 
-    y_true = pd.Series(test_target, dtype=float)
-    y_pred = pd.Series(predictions, dtype=float)
+    y_true = pd.to_numeric(pd.Series(test_target), errors="coerce")
+    y_pred = pd.to_numeric(pd.Series(predictions), errors="coerce")
+    valid_mask = y_true.notna() & y_pred.notna()
+    y_true = y_true.loc[valid_mask].reset_index(drop=True)
+    y_pred = y_pred.loc[valid_mask].reset_index(drop=True)
     mse = float(mean_squared_error(y_true, y_pred))
     regression_metrics = {
         "mae": float(mean_absolute_error(y_true, y_pred)),

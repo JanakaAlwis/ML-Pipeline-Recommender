@@ -156,6 +156,10 @@ def test_training_result_has_expected_fields() -> None:
         "target_column",
         "train_row_count",
         "test_row_count",
+        "train_features",
+        "test_features",
+        "train_target",
+        "test_target",
         "training_time_seconds",
         "cross_validation_scores",
         "mean_cv_score",
@@ -264,6 +268,10 @@ def test_rows_with_missing_target_are_removed_before_split() -> None:
     assert result.success is True
     assert (result.train_row_count or 0) + (result.test_row_count or 0) == len(dataframe) - 1
     assert any("target column contains missing values" in warning.lower() for warning in result.warnings)
+    assert result.train_target is not None
+    assert result.test_target is not None
+    assert not result.train_target.isna().any()
+    assert not result.test_target.isna().any()
 
 
 def test_smote_pipeline_trains_for_classification() -> None:

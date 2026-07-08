@@ -89,22 +89,26 @@ class ModelEvaluator:
             if pipeline is None:
                 raise InvalidEvaluationInputError("training_result.trained_pipeline must not be None.")
 
-            X = dataframe.drop(columns=[target_column])
-            y_true = dataframe[target_column]
+            train_features, test_features, train_target, test_target = _resolve_holdout_split(
+                training_result,
+                dataframe,
+                target_column,
+                task_type,
+            )
 
-            predictions = pipeline.predict(X)
-            row_count = int(len(dataframe))
+            predictions = pipeline.predict(test_features)
+            row_count = int(len(test_target))
 
             if task_type == "classification":
                 return _build_classification_result(
                     training_result=training_result,
-                    y_true=y_true,
+                    y_true=test_target,
                     predictions=predictions,
                     row_count=row_count,
                 )
             return _build_regression_result(
                 training_result=training_result,
-                y_true=y_true,
+                y_true=test_target,
                 predictions=predictions,
                 row_count=row_count,
             )
@@ -161,6 +165,25 @@ def _validate_inputs(
         raise InvalidEvaluationInputError("training_result.task_type and task_type must match.")
 
 
+def _resolve_holdout_split(
+    training_result: TrainingResult,
+    dataframe: pd.DataFrame,
+    target_column: str,
+    task_type: str,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    """Return the cleaned hold-out split captured during training when available."""
+
+    train_features = getattr(training_result, "train_features", None)
+    test_features = getattr(training_result, "test_features", None)
+    train_target = getattr(training_result, "train_target", None)
+    test_target = getattr(training_result, "test_target", None)
+
+    if all(value is not None for value in (train_features, test_features, train_target, test_target)):
+        return train_features, test_features, train_target, test_target
+
+    raise InvalidEvaluationInputError("Training result does not contain the cleaned hold-out split required for evaluation.")
+
+
 def _build_classification_result(
     *,
     training_result: TrainingResult,
@@ -171,14 +194,23 @@ def _build_classification_result(
     """Compute classification metrics and quality rating."""
 
     y_pred = np.asarray(predictions)
-    labels = sorted(pd.unique(pd.concat([y_true, pd.Series(y_pred)])))
+    y_true_series = pd.Series(y_true).reset_index(drop=True)
+    y_pred_series = pd.Series(y_pred).reset_index(drop=True)
+    valid_mask = y_true_series.notna() & y_pred_series.notna()
+    if not valid_mask.all():
+        y_true_series = y_true_series.loc[valid_mask].reset_index(drop=True)
+        y_pred_series = y_pred_series.loc[valid_mask].reset_index(drop=True)
+
+    unique_labels = pd.unique(pd.concat([y_true_series, y_pred_series], ignore_index=True).dropna())
+    labels = sorted(unique_labels.tolist(), key=lambda value: str(value))
+    y_pred_values = y_pred_series.to_numpy()
     classification_metrics = {
-        "accuracy": float(accuracy_score(y_true, y_pred)),
-        "precision_weighted": float(precision_score(y_true, y_pred, average="weighted", zero_division=0)),
-        "recall_weighted": float(recall_score(y_true, y_pred, average="weighted", zero_division=0)),
-        "f1_weighted": float(f1_score(y_true, y_pred, average="weighted", zero_division=0)),
+        "accuracy": float(accuracy_score(y_true_series, y_pred_values)),
+        "precision_weighted": float(precision_score(y_true_series, y_pred_values, average="weighted", zero_division=0)),
+        "recall_weighted": float(recall_score(y_true_series, y_pred_values, average="weighted", zero_division=0)),
+        "f1_weighted": float(f1_score(y_true_series, y_pred_values, average="weighted", zero_division=0)),
     }
-    matrix = confusion_matrix(y_true, y_pred, labels=labels)
+    matrix = confusion_matrix(y_true_series, y_pred_values, labels=labels)
     quality_rating = _rate_quality(classification_metrics["accuracy"])
     quality_summary = _summarize_quality(
         task_type="classification",
@@ -214,7 +246,13 @@ def _build_regression_result(
     """Compute regression metrics and quality rating."""
 
     y_pred = np.asarray(predictions, dtype=float)
-    y_true_values = np.asarray(y_true, dtype=float)
+    y_true_values = pd.to_numeric(pd.Series(y_true), errors="coerce").to_numpy(dtype=float)
+    valid_mask = ~np.isnan(y_true_values) & ~np.isnan(y_pred)
+    if not valid_mask.all():
+        y_true_values = y_true_values[valid_mask]
+        y_pred = y_pred[valid_mask]
+    if y_true_values.size == 0:
+        raise EvaluationExecutionError("Regression evaluation could not be computed because no valid target values were available.")
     mse = float(mean_squared_error(y_true_values, y_pred))
     regression_metrics = {
         "mae": float(mean_absolute_error(y_true_values, y_pred)),
@@ -291,3 +329,10 @@ def _failure_result(
         warnings=[],
         errors=[str(exc)],
     )
+
+
+def _safe_labels(y_true: pd.Series, y_pred: np.ndarray) -> list[object]:
+    """Return stable labels for classification metrics without sorting mixed types directly."""
+
+    unique_labels = pd.unique(pd.concat([pd.Series(y_true), pd.Series(y_pred)], ignore_index=True).dropna())
+    return sorted(unique_labels.tolist(), key=lambda value: str(value))

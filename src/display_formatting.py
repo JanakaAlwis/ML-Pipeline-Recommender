@@ -45,9 +45,25 @@ def format_cv_score(value: object) -> str:
 def format_percentage(value: object) -> str:
     """Format a percentage value with two decimal places."""
 
-    if not _is_number(value):
-        return "N/A"
-    return f"{float(value):.2f}%"
+    if _is_number(value):
+        return f"{float(value):.2f}%"
+
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return "N/A"
+        if text.endswith("%"):
+            numeric_text = text[:-1].strip()
+            try:
+                return f"{float(numeric_text):.2f}%"
+            except ValueError:
+                return text
+        try:
+            return f"{float(text):.2f}%"
+        except ValueError:
+            return text
+
+    return "N/A"
 
 
 def format_seconds(value: object) -> str:

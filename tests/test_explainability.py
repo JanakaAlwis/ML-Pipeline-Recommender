@@ -31,6 +31,14 @@ def _classification_data() -> pd.DataFrame:
     )
 
 
+def _classification_data_with_missing_target() -> pd.DataFrame:
+    """Create a classification dataset with a missing target value."""
+
+    dataframe = _classification_data().copy()
+    dataframe.loc[0, "target"] = None
+    return dataframe
+
+
 def _regression_data() -> pd.DataFrame:
     """Create a small regression dataset."""
 
@@ -42,6 +50,14 @@ def _regression_data() -> pd.DataFrame:
             "target": [10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 22.0, 24.0],
         }
     )
+
+
+def _regression_data_with_missing_target() -> pd.DataFrame:
+    """Create a regression dataset with a missing target value."""
+
+    dataframe = _regression_data().copy()
+    dataframe.loc[1, "target"] = None
+    return dataframe
 
 
 def _profile_result(task_type: str) -> DatasetProfileResult:
@@ -172,6 +188,21 @@ def test_successful_classification_explainability() -> None:
     assert result.explanation_summary is not None
 
 
+def test_classification_explainability_with_missing_target_values() -> None:
+    """Explainability should succeed when the training target contained missing values."""
+
+    profile = _profile_result("classification")
+    task = _task_result("classification")
+    recommendation = _recommendation("classification", "logistic_regression")
+    built = build_pipeline(recommendation, profile, task)
+    training_result = train_pipeline(built, _classification_data_with_missing_target(), "target", "classification", run_cross_validation=False)
+
+    result = explain_model(training_result, _classification_data_with_missing_target(), "target", "classification")
+
+    assert result.success is True
+    assert result.method_used == "permutation_importance"
+
+
 def test_successful_regression_explainability() -> None:
     """A trained regression pipeline should explain successfully."""
 
@@ -181,6 +212,21 @@ def test_successful_regression_explainability() -> None:
     assert result.success is True
     assert result.method_used == "permutation_importance"
     assert result.explanation_summary is not None
+
+
+def test_regression_explainability_with_missing_target_values() -> None:
+    """Explainability should succeed when the training target contained missing values."""
+
+    profile = _profile_result("regression")
+    task = _task_result("regression")
+    recommendation = _recommendation("regression", "ridge")
+    built = build_pipeline(recommendation, profile, task)
+    training_result = train_pipeline(built, _regression_data_with_missing_target(), "target", "regression", run_cross_validation=False)
+
+    result = explain_model(training_result, _regression_data_with_missing_target(), "target", "regression")
+
+    assert result.success is True
+    assert result.method_used == "permutation_importance"
 
 
 def test_invalid_training_result() -> None:

@@ -45,6 +45,14 @@ def _classification_eval_data() -> pd.DataFrame:
     )
 
 
+def _classification_eval_data_with_missing_target() -> pd.DataFrame:
+    """Create a classification evaluation dataset with a missing target value."""
+
+    dataframe = _classification_eval_data().copy()
+    dataframe.loc[1, "target"] = None
+    return dataframe
+
+
 def _regression_train_data() -> pd.DataFrame:
     """Create a small regression training dataset."""
 
@@ -69,6 +77,14 @@ def _regression_eval_data() -> pd.DataFrame:
             "target": [11.0, 13.0, 15.0, 17.0],
         }
     )
+
+
+def _regression_eval_data_with_missing_target() -> pd.DataFrame:
+    """Create a regression evaluation dataset with a missing target value."""
+
+    dataframe = _regression_eval_data().copy()
+    dataframe.loc[2, "target"] = None
+    return dataframe
 
 
 def _profile_result(task_type: str, *, eval_mode: bool = False) -> DatasetProfileResult:
@@ -209,6 +225,17 @@ def test_successful_classification_evaluation() -> None:
     assert result.regression_metrics is None
 
 
+def test_classification_evaluation_with_missing_target_values() -> None:
+    """Classification evaluation should ignore missing target values in the evaluation data."""
+
+    training_result = _trained_result("classification", "logistic_regression")
+    result = evaluate_model(training_result, _classification_eval_data_with_missing_target(), "target", "classification")
+
+    assert result.success is True
+    assert result.classification_metrics is not None
+    assert result.confusion_matrix is not None
+
+
 def test_successful_regression_evaluation() -> None:
     """A trained regression pipeline should evaluate successfully."""
 
@@ -220,6 +247,16 @@ def test_successful_regression_evaluation() -> None:
     assert result.predictions is not None
     assert result.regression_metrics is not None
     assert result.classification_metrics is None
+
+
+def test_regression_evaluation_with_missing_target_values() -> None:
+    """Regression evaluation should ignore missing target values in the evaluation data."""
+
+    training_result = _trained_result("regression", "ridge")
+    result = evaluate_model(training_result, _regression_eval_data_with_missing_target(), "target", "regression")
+
+    assert result.success is True
+    assert result.regression_metrics is not None
 
 
 def test_invalid_training_result() -> None:
@@ -294,4 +331,4 @@ def test_prediction_list() -> None:
     result = evaluate_model(training_result, _regression_eval_data(), "target", "regression")
 
     assert isinstance(result.predictions, list)
-    assert len(result.predictions) == len(_regression_eval_data())
+    assert len(result.predictions) == result.row_count

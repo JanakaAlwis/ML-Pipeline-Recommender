@@ -70,6 +70,20 @@ def _split_holdout_data(
     return train_features, test_features, train_target, test_target
 
 
+def _holdout_split_from_training_result(training_result: Any, dataframe: pd.DataFrame, target_column: str, task_type: str | None) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    """Return the hold-out split captured during training when available."""
+
+    train_features = getattr(training_result, "train_features", None)
+    test_features = getattr(training_result, "test_features", None)
+    train_target = getattr(training_result, "train_target", None)
+    test_target = getattr(training_result, "test_target", None)
+
+    if all(value is not None for value in (train_features, test_features, train_target, test_target)):
+        return train_features, test_features, train_target, test_target
+
+    return _split_holdout_data(dataframe, target_column, task_type)
+
+
 def _score_pipeline(training_result: Any, features: pd.DataFrame, target: pd.Series, scoring_metric: str | None) -> float | None:
     """Score the trained pipeline using the requested scoring metric."""
 
@@ -414,7 +428,7 @@ def render() -> None:
     target_column = st.session_state["target_column"]
     task_type = st.session_state["task_result"].task_type
 
-    train_features, test_features, train_target, test_target = _split_holdout_data(dataframe, target_column, task_type)
+    train_features, test_features, train_target, test_target = _holdout_split_from_training_result(training_result, dataframe, target_column, task_type)
     holdout_predictions = _predictions_on_holdout(training_result, test_features)
     main_score = accuracy_score(test_target, holdout_predictions) if task_type == "classification" else r2_score(test_target, holdout_predictions)
     split_summary = _build_generalization_summary(training_result, train_features, test_features, train_target, test_target)

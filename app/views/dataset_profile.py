@@ -159,15 +159,25 @@ def _render_profile_results(profile_result: object) -> None:
 
     st.subheader("Duplicates")
     st.write(profile_result.duplicate_row_count)
+    if getattr(profile_result, "duplicate_row_count", 0) and getattr(profile_result, "duplicate_row_count", 0) > 0:
+        st.caption(
+            "Duplicate rows were detected. The system reports duplicates for user review. Duplicate removal is not applied automatically unless explicitly included in preprocessing."
+        )
+    else:
+        st.caption("No duplicate rows were detected.")
 
     high_correlation_pairs_table = pd.DataFrame(
         profile_result.high_correlation_pairs,
         columns=["column_1", "column_2", "correlation"],
     )
-    if not high_correlation_pairs_table.empty:
+    if len(profile_result.numeric_columns or []) < 2:
+        st.info("Correlation analysis requires at least two numerical columns.")
+    elif high_correlation_pairs_table.empty:
+        st.info("No high correlations above the selected threshold were found.")
+    else:
         high_correlation_pairs_table["correlation"] = high_correlation_pairs_table["correlation"].map(lambda value: f"{value:.4f}" if isinstance(value, (int, float)) else value)
-    st.subheader("High correlations")
-    st.dataframe(high_correlation_pairs_table, use_container_width=True)
+        st.subheader("High correlations")
+        st.dataframe(high_correlation_pairs_table, use_container_width=True)
 
     outlier_counts_table = pd.DataFrame(
         list(profile_result.outlier_counts.items()),

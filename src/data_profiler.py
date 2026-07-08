@@ -407,7 +407,8 @@ def _calculate_correlation_matrix(
 
     if len(numeric_columns) < 2:
         return None
-    return df[numeric_columns].corr(numeric_only=True)
+    numeric_frame = df[numeric_columns].apply(pd.to_numeric, errors="coerce")
+    return numeric_frame.corr(numeric_only=True)
 
 
 def _find_high_correlation_pairs(

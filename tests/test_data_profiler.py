@@ -217,6 +217,23 @@ def test_profile_dataset_detects_high_correlation_pairs() -> None:
     assert any(abs(pair[2]) >= HIGH_CORRELATION_THRESHOLD for pair in result.high_correlation_pairs)
 
 
+def test_profile_dataset_detects_high_correlation_pairs_with_missing_and_duplicates() -> None:
+    """High correlation detection should still work with missing values and duplicate rows."""
+
+    df = pd.DataFrame(
+        {
+            "x": [1, 2, 3, 4, 5, 5],
+            "y": [2, 4, None, 8, 10, 10],
+            "z": [5, 4, 3, 2, 1, 1],
+        }
+    )
+
+    result = profile_dataset(df)
+
+    assert any({pair[0], pair[1]} == {"x", "y"} for pair in result.high_correlation_pairs)
+    assert result.duplicate_row_count == 1
+
+
 def test_profile_dataset_detects_iqr_outliers() -> None:
     """IQR outliers should be detected for obvious outlier values."""
 

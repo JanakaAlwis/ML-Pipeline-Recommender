@@ -29,6 +29,14 @@ def _workflow_data() -> pd.DataFrame:
     )
 
 
+def _workflow_data_with_missing_target() -> pd.DataFrame:
+    """Create a classification dataset with a missing target value."""
+
+    dataframe = _workflow_data().copy()
+    dataframe.loc[0, "target"] = None
+    return dataframe
+
+
 def _regression_workflow_data() -> pd.DataFrame:
     """Create a small regression dataset for report tests."""
 
@@ -43,6 +51,14 @@ def _regression_workflow_data() -> pd.DataFrame:
             "target": targets,
         }
     )
+
+
+def _regression_workflow_data_with_missing_target() -> pd.DataFrame:
+    """Create a regression dataset with a missing target value."""
+
+    dataframe = _regression_workflow_data().copy()
+    dataframe.loc[2, "target"] = None
+    return dataframe
 
 
 def _dataset_profile() -> object:
@@ -108,6 +124,95 @@ def _trained_workflow_results(include_explainability: bool = True):
     return profile_result, task_result, recommendation_result, training_result, evaluation_result, explainability_result
 
 
+def _trained_workflow_results_with_missing_target(task_type: str, include_explainability: bool = True):
+    """Build completed workflow results for a dataset with a missing target value."""
+
+    if task_type == "classification":
+        dataframe = _workflow_data_with_missing_target()
+        profile_result = DatasetProfileResult(
+            success=True,
+            dataframe=dataframe,
+            messages=["ok"],
+            warnings=[],
+            errors=[],
+            shape=dataframe.shape,
+            row_count=len(dataframe),
+            column_count=len(dataframe.columns),
+            column_names=list(dataframe.columns),
+            numeric_columns=["age", "income"],
+            categorical_columns=["city"],
+            boolean_columns=[],
+            datetime_columns=[],
+            missing_values={column: int(dataframe[column].isna().sum()) for column in dataframe.columns},
+            missing_percentages={column: float(dataframe[column].isna().sum() / len(dataframe) * 100.0) for column in dataframe.columns},
+            duplicate_row_count=0,
+            duplicate_row_percentage=0.0,
+            constant_columns=[],
+            high_cardinality_columns=[],
+            sample_rows=dataframe.head(5),
+            column_summary=pd.DataFrame(),
+            numeric_summary=pd.DataFrame(),
+            categorical_summary=pd.DataFrame(),
+            correlation_matrix=pd.DataFrame(),
+            high_correlation_pairs=[],
+            outlier_counts={"age": 0, "income": 0},
+            outlier_percentages={"age": 0.0, "income": 0.0},
+            target_column="target",
+            target_distribution=None,
+            class_imbalance_ratio=0.5,
+            profile_version="1.0",
+        )
+        task_result = _task_detection_result()
+        recommendation_result = recommend_pipelines(profile_result, task_result)
+        built_pipeline = build_pipeline(recommendation_result.top_pipelines[0], profile_result, task_result)
+        training_result = train_pipeline(built_pipeline, dataframe, "target", task_result.task_type, run_cross_validation=False)
+        evaluation_result = evaluate_model(training_result, dataframe, "target", task_result.task_type)
+        explainability_result = explain_model(training_result, dataframe, "target", task_result.task_type) if include_explainability else None
+        return profile_result, task_result, recommendation_result, training_result, evaluation_result, explainability_result
+
+    dataframe = _regression_workflow_data_with_missing_target()
+    profile_result = DatasetProfileResult(
+        success=True,
+        dataframe=dataframe,
+        messages=["ok"],
+        warnings=[],
+        errors=[],
+        shape=dataframe.shape,
+        row_count=len(dataframe),
+        column_count=len(dataframe.columns),
+        column_names=list(dataframe.columns),
+        numeric_columns=["age", "income", "target"],
+        categorical_columns=["city"],
+        boolean_columns=[],
+        datetime_columns=[],
+        missing_values={column: int(dataframe[column].isna().sum()) for column in dataframe.columns},
+        missing_percentages={column: float(dataframe[column].isna().sum() / len(dataframe) * 100.0) for column in dataframe.columns},
+        duplicate_row_count=0,
+        duplicate_row_percentage=0.0,
+        constant_columns=[],
+        high_cardinality_columns=[],
+        sample_rows=dataframe.head(5),
+        column_summary=pd.DataFrame(),
+        numeric_summary=pd.DataFrame(),
+        categorical_summary=pd.DataFrame(),
+        correlation_matrix=pd.DataFrame(),
+        high_correlation_pairs=[],
+        outlier_counts={"age": 0, "income": 0, "target": 0},
+        outlier_percentages={"age": 0.0, "income": 0.0, "target": 0.0},
+        target_column="target",
+        target_distribution=None,
+        class_imbalance_ratio=None,
+        profile_version="1.0",
+    )
+    task_result = detect_task_type(dataframe, "target")
+    recommendation_result = recommend_pipelines(profile_result, task_result)
+    built_pipeline = build_pipeline(recommendation_result.top_pipelines[0], profile_result, task_result)
+    training_result = train_pipeline(built_pipeline, dataframe, "target", task_result.task_type, run_cross_validation=False)
+    evaluation_result = evaluate_model(training_result, dataframe, "target", task_result.task_type)
+    explainability_result = explain_model(training_result, dataframe, "target", task_result.task_type) if include_explainability else None
+    return profile_result, task_result, recommendation_result, training_result, evaluation_result, explainability_result
+
+
 def test_report_result_has_expected_fields() -> None:
     """The report result dataclass should expose the required fields."""
 
@@ -141,6 +246,44 @@ def test_successful_markdown_report_generation() -> None:
     assert "## Dataset Summary" in result.markdown_report
     assert "## Conclusion" in result.markdown_report
     assert "Target column: target" in result.markdown_report
+
+
+def test_classification_report_generation_with_missing_target_values() -> None:
+    """Report generation should succeed when the classification target had missing values."""
+
+    profile_result, task_result, recommendation_result, training_result, evaluation_result, explainability_result = _trained_workflow_results_with_missing_target("classification")
+
+    result = generate_report(
+        profile_result,
+        task_result,
+        recommendation_result,
+        training_result,
+        evaluation_result,
+        explainability_result=explainability_result,
+        include_pdf=False,
+    )
+
+    assert result.success is True
+    assert result.markdown_report is not None
+
+
+def test_regression_report_generation_with_missing_target_values() -> None:
+    """Report generation should succeed when the regression target had missing values."""
+
+    profile_result, task_result, recommendation_result, training_result, evaluation_result, explainability_result = _trained_workflow_results_with_missing_target("regression")
+
+    result = generate_report(
+        profile_result,
+        task_result,
+        recommendation_result,
+        training_result,
+        evaluation_result,
+        explainability_result=explainability_result,
+        include_pdf=False,
+    )
+
+    assert result.success is True
+    assert result.markdown_report is not None
 
 
 def test_successful_regression_report_generation() -> None:

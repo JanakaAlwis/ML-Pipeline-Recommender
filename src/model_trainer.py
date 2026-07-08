@@ -34,6 +34,10 @@ class TrainingResult:
     target_column: str | None
     train_row_count: int | None
     test_row_count: int | None
+    train_features: pd.DataFrame | None
+    test_features: pd.DataFrame | None
+    train_target: pd.Series | None
+    test_target: pd.Series | None
     training_time_seconds: float | None
     cross_validation_scores: list[float]
     mean_cv_score: float | None
@@ -145,6 +149,10 @@ class ModelTrainer:
                 target_column=target_column,
                 train_row_count=train_row_count,
                 test_row_count=test_row_count,
+                train_features=X_train,
+                test_features=X_test,
+                train_target=y_train,
+                test_target=y_test,
                 training_time_seconds=training_time_seconds,
                 cross_validation_scores=cross_validation_scores,
                 mean_cv_score=mean_cv_score,
@@ -268,6 +276,10 @@ def _failure_result(
         target_column=target_column if isinstance(target_column, str) else None,
         train_row_count=None,
         test_row_count=None,
+        train_features=None,
+        test_features=None,
+        train_target=None,
+        test_target=None,
         training_time_seconds=None,
         cross_validation_scores=[],
         mean_cv_score=None,

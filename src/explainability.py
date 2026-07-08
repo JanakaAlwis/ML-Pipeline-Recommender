@@ -92,9 +92,10 @@ def explain_model(
         if pipeline is None:
             raise InvalidExplainabilityInputError("training_result.trained_pipeline must not be None.")
 
-        X = dataframe.drop(columns=[target_column])
-        y = dataframe[target_column]
-        X_sample, y_sample, sample_message = _sample_for_permutation_importance(X, y)
+        test_features, test_target = _resolve_holdout_split(training_result)
+        X_sample, y_sample, sample_message = _sample_for_permutation_importance(test_features, test_target)
+        if len(X_sample) != len(y_sample):
+            raise InvalidExplainabilityInputError("Stored hold-out features and target values must have matching lengths.")
 
         scoring = "f1_weighted" if task_type == "classification" else "r2"
         repeats = MAX_PERMUTATION_REPEATS if len(X_sample) > 1000 or X_sample.shape[1] > 20 else 10
@@ -108,7 +109,7 @@ def explain_model(
             n_jobs=-1,
         )
 
-        feature_names = list(X.columns)
+        feature_names = list(test_features.columns)
         importances = {feature_names[index]: float(value) for index, value in enumerate(importance.importances_mean)}
         top_features = sorted(importances.items(), key=lambda item: item[1], reverse=True)[:TOP_FEATURE_COUNT]
 
@@ -156,6 +157,8 @@ def generate_shap_explanation(
         if pipeline is None:
             raise InvalidExplainabilityInputError("training_result.trained_pipeline must not be None.")
 
+        test_features, _ = _resolve_holdout_split(training_result)
+
         model, preprocessor = _extract_model_and_preprocessor(pipeline)
         if model is None or preprocessor is None:
             raise InvalidExplainabilityInputError("The trained pipeline does not expose a compatible model and preprocessor.")
@@ -167,9 +170,8 @@ def generate_shap_explanation(
 
         import shap  # type: ignore  # pragma: no cover - optional dependency
 
-        feature_frame = dataframe.drop(columns=[target_column])
         sample_size = max(1, min(int(sample_size), SHAP_MAX_SAMPLE_SIZE))
-        sample_frame = _sample_frame(feature_frame, sample_size)
+        sample_frame = _sample_frame(test_features, sample_size)
         sample_size_used = len(sample_frame)
 
         transformed_sample = preprocessor.transform(sample_frame)
@@ -257,6 +259,18 @@ def _validate_inputs(
         raise InvalidExplainabilityInputError(f"Target column not found: {target_column}")
     if task_type not in {"classification", "regression"}:
         raise InvalidExplainabilityInputError("task_type must be classification or regression.")
+
+
+def _resolve_holdout_split(training_result: TrainingResult) -> tuple[pd.DataFrame, pd.Series]:
+    """Return the cleaned hold-out split captured during training."""
+
+    test_features = getattr(training_result, "test_features", None)
+    test_target = getattr(training_result, "test_target", None)
+    if test_features is None or test_target is None:
+        raise InvalidExplainabilityInputError("Training result does not contain the cleaned hold-out split required for explainability.")
+    if len(test_features) != len(test_target):
+        raise InvalidExplainabilityInputError("Stored hold-out features and target values must have matching lengths.")
+    return test_features, test_target
 
 
 def _failure_result(exc: Exception) -> ExplainabilityResult:
