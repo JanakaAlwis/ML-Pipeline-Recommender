@@ -3,12 +3,113 @@
 from __future__ import annotations
 
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 from app.streamlit_app import render_header
 from src.application_state import has_dataset, initialize_session_state
 from src.data_profiler import profile_dataset
 from src.missing_value_analysis import build_high_missingness_warnings, build_missing_value_analysis_frame, build_missing_value_overview
+
+
+def _render_advanced_visualizations(profile_result: object) -> None:
+    """Render optional advanced visualizations for numerical features."""
+
+    with st.expander("Advanced Dataset Visualisations", expanded=False):
+        numeric_columns = list(getattr(profile_result, "numeric_columns", []) or [])
+        dataframe = getattr(profile_result, "dataframe", None)
+
+        if dataframe is None or not isinstance(dataframe, pd.DataFrame):
+            st.info("Advanced visualisations are not available because the profiled dataset is missing.")
+            return
+
+        st.subheader("Correlation Matrix")
+        st.caption("Correlation values close to +1 or -1 indicate strong relationships between numerical features.")
+        if len(numeric_columns) < 2:
+            st.info("Correlation matrix requires at least two numerical columns.")
+        else:
+            correlation_matrix = dataframe[numeric_columns].corr(numeric_only=True)
+            heatmap = px.imshow(
+                correlation_matrix,
+                text_auto=".2f",
+                color_continuous_scale="RdBu",
+                zmin=-1,
+                zmax=1,
+                aspect="auto",
+                labels={"color": "Correlation"},
+            )
+            heatmap.update_layout(margin={"l": 10, "r": 10, "t": 30, "b": 10})
+            st.plotly_chart(heatmap, use_container_width=True)
+
+        st.subheader("Feature Distribution Histogram")
+        st.caption("This chart shows how values are distributed for one numerical feature.")
+        if not numeric_columns:
+            st.info("Histogram requires at least one numerical column.")
+        else:
+            selected_histogram_column = st.selectbox(
+                "Select a numerical feature for histogram",
+                options=numeric_columns,
+                key="profile_histogram_column",
+            )
+            histogram = px.histogram(
+                dataframe,
+                x=selected_histogram_column,
+                nbins=30,
+                title=f"Distribution of {selected_histogram_column}",
+            )
+            histogram.update_layout(margin={"l": 10, "r": 10, "t": 40, "b": 10})
+            st.plotly_chart(histogram, use_container_width=True)
+
+        st.subheader("Scatter Plot")
+        st.caption("Scatter plots help inspect relationships between two numerical features.")
+        if len(numeric_columns) < 2:
+            st.info("Scatter plot requires at least two numerical columns.")
+        else:
+            scatter_left, scatter_right = st.columns(2)
+            scatter_x = scatter_left.selectbox(
+                "Select X-axis feature",
+                options=numeric_columns,
+                key="profile_scatter_x",
+            )
+            scatter_y_options = [column for column in numeric_columns if column != scatter_x] or numeric_columns
+            scatter_y = scatter_right.selectbox(
+                "Select Y-axis feature",
+                options=scatter_y_options,
+                key="profile_scatter_y",
+            )
+            scatter_plot = px.scatter(
+                dataframe,
+                x=scatter_x,
+                y=scatter_y,
+                title=f"{scatter_y} vs {scatter_x}",
+                opacity=0.7,
+            )
+            scatter_plot.update_layout(margin={"l": 10, "r": 10, "t": 40, "b": 10})
+            st.plotly_chart(scatter_plot, use_container_width=True)
+
+        st.subheader("Pairwise Relationship View")
+        st.caption("Optional overview of pairwise relationships for a small set of numerical features.")
+        if len(numeric_columns) < 2:
+            st.info("Pairwise view requires at least two numerical columns.")
+        else:
+            selected_pairwise_columns = st.multiselect(
+                "Select up to 4 numerical features",
+                options=numeric_columns,
+                default=numeric_columns[: min(3, len(numeric_columns))],
+                max_selections=4,
+                key="profile_pairwise_columns",
+            )
+            if len(selected_pairwise_columns) < 2:
+                st.info("Select at least two numerical features to display the pairwise view.")
+            else:
+                pairwise_plot = px.scatter_matrix(
+                    dataframe,
+                    dimensions=selected_pairwise_columns,
+                    title="Pairwise relationships",
+                )
+                pairwise_plot.update_traces(diagonal_visible=False, showupperhalf=False)
+                pairwise_plot.update_layout(height=700, margin={"l": 10, "r": 10, "t": 40, "b": 10})
+                st.plotly_chart(pairwise_plot, use_container_width=True)
 
 
 def render() -> None:
@@ -115,5 +216,7 @@ def render() -> None:
             st.dataframe(profile_result.sample_rows, use_container_width=True)
         else:
             st.write("No sample rows available.")
+
+        _render_advanced_visualizations(profile_result)
 
     st.info("Next: open Task Detection.")
