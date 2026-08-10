@@ -8,7 +8,8 @@ import streamlit as st
 
 from app.streamlit_app import render_header, render_wrapped_key_value_table, render_wrapped_table
 from src.application_state import has_dataset, has_profile, initialize_session_state
-from src.display_formatting import format_confidence
+from src.display_formatting import format_confidence, format_percentage
+from src.feature_assessment import build_feature_assessment_frame
 from src.task_detector import detect_task_type
 
 
@@ -89,6 +90,34 @@ def _render_task_detection_result(task_result: object) -> None:
     render_wrapped_key_value_table(detail_rows)
 
 
+def _render_feature_assessment(profile_result: object, target_column: str) -> None:
+    """Render the lightweight pre-modeling feature assessment."""
+
+    st.subheader("Feature Assessment")
+    st.caption(
+        "Feature Assessment provides a preliminary review of the selected dataset features after the target variable has been identified. "
+        "It highlights features that may require review before model training. The assessment does not automatically remove or modify features."
+    )
+    with st.expander("How the assessment works", expanded=False):
+        st.write(
+            "The assessment uses profiling-only signals such as data type, identifier-like patterns, missing values, target associations, and redundancy checks."
+        )
+        st.write(
+            "The selected target variable is shown separately and is not treated as a predictive feature. Identifier-like columns are kept visible but are excluded from redundancy comparisons."
+        )
+
+    feature_assessment_table = build_feature_assessment_frame(profile_result, target_column=target_column)
+    if feature_assessment_table.empty:
+        st.info("Feature Assessment is not available for this dataset.")
+        return
+
+    display_table = feature_assessment_table.copy()
+    if "Missing %" in display_table.columns:
+        display_table["Missing %"] = display_table["Missing %"].map(format_percentage)
+    st.caption(f"Selected target variable: {target_column}")
+    st.dataframe(display_table, use_container_width=True, hide_index=True)
+
+
 def render() -> None:
     """Render the task detection page."""
 
@@ -154,5 +183,7 @@ def render() -> None:
     stored_task_result = st.session_state.get("task_result")
     if selected_target_column != placeholder_label and getattr(stored_task_result, "target_column", None) == selected_target_column:
         st.caption("Detected task details remain available below the button.")
+        if getattr(stored_task_result, "success", False):
+            _render_feature_assessment(st.session_state["profile_result"], selected_target_column)
 
     st.info("Next: open Pipeline Recommendations.")

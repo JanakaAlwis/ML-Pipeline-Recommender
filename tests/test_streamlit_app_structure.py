@@ -53,3 +53,15 @@ def test_expected_session_state_keys_are_defined_in_app() -> None:
     app_source = (APP_DIR / "streamlit_app.py").read_text(encoding="utf-8")
     for key in EXPECTED_SESSION_STATE_KEYS:
         assert key in app_source
+
+
+def test_feature_assessment_lives_on_task_detection_not_dataset_profile() -> None:
+    """Feature Assessment should be rendered from Task Detection, not Dataset Profile."""
+
+    dataset_profile_source = (VIEW_DIR / "dataset_profile.py").read_text(encoding="utf-8")
+    task_detection_source = (VIEW_DIR / "task_detection.py").read_text(encoding="utf-8")
+
+    assert "Feature Assessment" not in dataset_profile_source
+    assert "build_feature_assessment_frame" not in dataset_profile_source
+    assert "Feature Assessment" in task_detection_source
+    assert "build_feature_assessment_frame" in task_detection_source
