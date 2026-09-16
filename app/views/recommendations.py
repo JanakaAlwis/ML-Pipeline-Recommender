@@ -53,12 +53,49 @@ def _explainability_rating(pipeline: object) -> str:
 
 
 def _why_recommended(pipeline: object) -> str:
-    """Create a short explanation for why the pipeline is recommended."""
+    """Create a concise presentation explanation from recommendation fields."""
 
-    explanation = getattr(pipeline, "explanation", "") or "This pipeline matches the detected task and dataset characteristics."
-    if explanation.endswith("."):
-        return explanation
-    return f"{explanation}."
+    task_type = str(getattr(pipeline, "task_type", "") or "the detected").lower()
+    model_family = str(getattr(pipeline, "recommended_model_family", "") or "").strip()
+    model_name = _format_model_name(model_family) if model_family else "the selected model"
+    model_key = model_family.replace("_", "").replace(" ", "").lower()
+
+    model_reason = {
+        "logisticregression": "an interpretable linear baseline",
+        "randomforest": "a flexible ensemble for nonlinear patterns",
+        "decisiontree": "a simple tree model for nonlinear patterns",
+        "knn": "a distance-based alternative for local patterns",
+        "kneighborsclassifier": "a distance-based alternative for local patterns",
+        "gaussiannb": "a fast probabilistic baseline",
+        "linearregression": "a clear linear baseline",
+        "ridge": "a regularized linear model for correlated predictors",
+        "lasso": "a regularized linear model that can reduce model complexity",
+        "svr": "a margin-based model for nonlinear regression",
+        "randomforestregressor": "a flexible ensemble for nonlinear regression",
+        "decisiontreeregressor": "a tree model for nonlinear regression",
+    }.get(model_key, model_name)
+
+    details: list[str] = []
+    missing_strategy = str(getattr(pipeline, "missing_value_strategy", "") or "").strip()
+    if missing_strategy and "no special imputation" not in missing_strategy.lower():
+        details.append(missing_strategy.rstrip("."))
+
+    scaling_strategy = str(getattr(pipeline, "scaling_strategy", "") or "").strip()
+    if scaling_strategy:
+        details.append(scaling_strategy.rstrip("."))
+
+    imbalance_strategy = str(getattr(pipeline, "imbalance_handling_strategy", "") or "").strip()
+    if imbalance_strategy:
+        details.append(imbalance_strategy.rstrip("."))
+
+    dimensionality_strategy = str(getattr(pipeline, "dimensionality_reduction_strategy", "") or "").strip()
+    if dimensionality_strategy and "no dimensionality" not in dimensionality_strategy.lower():
+        details.append(dimensionality_strategy.rstrip("."))
+
+    explanation = f"Recommended as {model_name} for {task_type}; it provides {model_reason}."
+    if details:
+        explanation += f" Strategy: {'; '.join(details)}."
+    return explanation
 
 
 def _preprocessing_strategy_items(preprocessing_steps: object) -> list[str]:
