@@ -4,7 +4,7 @@
 
 This audit verifies the current executable implementation of the thesis prototype against the source code, Streamlit page paths, knowledge-base JSON files, configuration, tests, `PROJECT_TECHNICAL_DOCUMENTATION.md`, and `PROJECT_REVIEW_REPORT.md`.
 
-No implementation files were changed for this audit. The current automated test run completed with **159 passed, 1 warning**. The warning is an existing scikit-learn `UndefinedMetricWarning` from a small regression report test.
+No implementation files were changed for this documentation update. The current automated test run completed with **173 passed, 1 warning**. The warning is an existing scikit-learn `UndefinedMetricWarning` from a small regression report test.
 
 ## 1. End-to-End Workflow
 
@@ -31,8 +31,9 @@ The application shell in `app/streamlit_app.py` defines the ordered pages, share
 ### Important discrepancies
 
 1. **PDF is documented as optional output but is not currently generated.** `src.report_generator.generate_report()` accepts `include_pdf` only for backward compatibility, explicitly ignores it, and always returns `pdf_bytes = None`. The Streamlit report page offers Markdown only.
-2. **The report does not preserve the user-selected pipeline as a distinct report input.** `PipelineRecommendationResult` has no `selected_pipeline` field. `src.report_generator._build_selected_pipeline_summary()` falls back to `top_pipelines[0]`, so the report can describe the first-ranked pipeline rather than a different pipeline selected by the user.
-3. The technical documentation describes the broader Markdown/PDF architecture and optional PDF fallback, but the current executable report path is Markdown-only.
+2. **Previous selected-pipeline report mismatch: resolved.** The earlier implementation could fall back to `top_pipelines[0]`. The current report page passes `st.session_state["selected_pipeline"]` explicitly to `generate_report()`, and the report uses that recommendation for selected-pipeline sections and the overall summary.
+3. **Previous stale-result risk: addressed.** Current session-state invalidation clears downstream artifacts when the effective pipeline changes or a new training run begins. Evaluation regeneration clears evaluation-dependent results. Explainability regeneration now preserves evaluation/training state while clearing only report and SHAP artifacts.
+4. The technical documentation still described the broader Markdown/PDF architecture and optional PDF fallback; the executable report path remains Markdown-only.
 
 ## 2. Recommendation Engine
 
@@ -296,11 +297,11 @@ This conflicts with the technical documentation’s description of optional PDF 
 
 ### Report content limitations
 
-Recommendation, training, evaluation, and primary permutation-importance explainability information can reach the Markdown report. Optional SHAP does not reach it through the current state/result contract. Also, the report generator falls back to the first-ranked recommendation because the recommendation result does not carry the UI’s separately selected pipeline.
+Recommendation, training, evaluation, and primary permutation-importance explainability information can reach the Markdown report. The interactive report uses the explicitly selected recommendation and the actual fitted estimator name from `TrainingResult.model_name`. Optional SHAP remains separate from the report result contract and is not included in the Markdown report.
 
 ## 9. Testing Reality Check
 
-Current run: **159 passed, 1 warning, 0 failures, 0 skipped**.
+Current run: **173 passed, 1 warning, 0 failures, 0 skipped**.
 
 ### Coverage by type
 
@@ -353,7 +354,7 @@ Only significant discrepancies are listed here:
 2. `PROJECT_TECHNICAL_DOCUMENTATION.md` says the system does not implement SHAP-based explanations in the main workflow. The current Explainability page does provide an optional user-triggered SHAP path. The more accurate statement is that SHAP is optional and not part of the automatic core run.
 3. `PROJECT_TECHNICAL_DOCUMENTATION.md` presents feature selection as a builder-supported preprocessing behavior. The current builder executes PCA but does not instantiate a feature-selection transformer; feature selection is recommendation-level text only.
 4. `PROJECT_TECHNICAL_DOCUMENTATION.md` lists the full builder model-family inventory without clearly separating builder support from normal recommendation reachability. Several listed models are manually builder-supported but not selected by current archetype logic.
-5. `PROJECT_REVIEW_REPORT.md` states that the full suite passed with 131 tests. The current repository contains and passes 159 tests, so that count is outdated.
+5. `PROJECT_REVIEW_REPORT.md` states that the full suite passed with 131 tests. The current repository contains and passes 173 tests, so that count is outdated.
 6. `PROJECT_REVIEW_REPORT.md` describes PDF as a future/core-requirement consideration, which is consistent with current code only if PDF is treated as unavailable. It should not be read as evidence that PDF currently works.
 
 ## MUST FIX BEFORE DEVELOPMENT FREEZE
@@ -362,11 +363,14 @@ None identified as a blocking workflow, leakage, or thesis-scope defect.
 
 The SMOTE path is correctly structured: it is inserted into an imbalanced-learn pipeline, fitted only after the hold-out split, and applied within CV training folds. The core CSV -> profile -> task -> recommendation -> build -> train -> evaluate -> permutation-explainability -> Markdown-report path is executable and covered by backend tests.
 
-The report’s selected-pipeline mismatch and the SHAP-to-report gap are real implementation limitations, but they are not necessarily freeze blockers if the thesis explicitly claims Markdown-only reporting and describes the report as summarizing the top-ranked recommendation rather than always the user’s selected candidate. If the thesis promises exact selected-pipeline reporting or SHAP report inclusion, those claims must be adjusted or the issues must be fixed before submission.
+The selected-pipeline mismatch was resolved and regression-tested. The SHAP-to-report gap remains a limitation, but it is not a freeze blocker if the thesis describes SHAP as optional Explainability-page output and reporting as Markdown-only.
+
+During validation, an overly broad Explainability invalidation call temporarily cleared `evaluation_result`, causing Explainability, SHAP reruns, and Report navigation to fail their prerequisites. A narrow `invalidate_explainability_dependents()` helper now preserves evaluation and training results while clearing report and SHAP artifacts.
 
 ## THESIS CLAIMS THAT MUST BE ADJUSTED
 
 - State that reporting currently supports Markdown only; do not claim working PDF export.
+- State that the interactive report receives the selected recommendation explicitly and uses the fitted estimator identity from training.
 - Describe SHAP as optional, manually triggered, tree-model-only functionality exposed in the Explainability page, not as the core automatic explainability method and not as a report output.
 - Distinguish models implemented by the pipeline builder from models currently reachable through knowledge-base recommendations.
 - Do not claim automatic feature selection. The current system can recommend feature selection textually, but it does not execute a selector.
@@ -376,7 +380,6 @@ The report’s selected-pipeline mismatch and the SHAP-to-report gap are real im
 
 ## OPTIONAL / FUTURE WORK
 
-- Correctly carry the user-selected pipeline into `ReportResult` and report generation.
 - Propagate optional SHAP results into report generation if SHAP reporting becomes a stated requirement.
 - Add a true browser/session-level end-to-end test for the complete Streamlit workflow.
 - Implement an actual feature-selection transformer only if it becomes part of the thesis scope.
@@ -387,4 +390,4 @@ The report’s selected-pipeline mismatch and the SHAP-to-report gap are real im
 
 **Can the current system reasonably be considered feature-complete for the stated Bachelor's thesis scope: YES.**
 
-The system has an executable, modular, rule-based recommendation workflow for structured CSV data, real preprocessing and model training, held-out evaluation, recommendation-level explanations, permutation-based model explainability, and Markdown reporting. The implementation is supported by 159 passing automated tests. The thesis must describe PDF, SHAP, feature selection, model reachability, and test scope accurately, but no genuine leakage or core workflow failure was identified that requires further development before freezing the stated prototype scope.
+The system has an executable, modular, rule-based recommendation workflow for structured CSV data, real preprocessing and model training, held-out evaluation, recommendation-level explanations, permutation-based model explainability, and Markdown reporting. The implementation is supported by 173 passing automated tests. Selected-pipeline report identity and downstream session-state invalidation have been implemented and regression-tested. The thesis must describe PDF, SHAP, feature selection, model reachability, and test scope accurately, but no genuine leakage or core workflow failure was identified that requires further development before freezing the stated prototype scope.

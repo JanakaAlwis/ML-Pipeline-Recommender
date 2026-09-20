@@ -21,7 +21,7 @@ Tabular datasets often contain missing values, mixed feature types, imbalance, c
 - Convert the selected recommendation into an executable scikit-learn / imbalanced-learn pipeline.
 - Train and evaluate the chosen pipeline.
 - Explain the recommendation rationale and the trained model using feature importance.
-- Generate a thesis-friendly Markdown report and optional PDF export.
+- Generate a thesis-friendly Markdown report.
 
 **Intended users**
 
@@ -43,8 +43,8 @@ Tabular datasets often contain missing values, mixed feature types, imbalance, c
 - Not designed for multi-table relational datasets.
 - Not designed for free-text, image, audio, graph, or generic time-series workflows.
 - Recommendation logic is rule-based and knowledge-base-driven, not learned from historical training data.
-- Explainability currently uses permutation importance only; it does not implement LIME, counterfactuals, PDP, ICE, Anchors, or SHAP-based explanations in the main workflow.
-- PDF export is optional and depends on the availability of `reportlab`.
+- Explainability uses permutation importance in the automatic workflow; optional manual SHAP is available for supported tree-based models. LIME, counterfactuals, PDP, ICE, and Anchors are not implemented.
+- Report generation currently provides Markdown only; PDF export is not implemented in the executable application.
 - The application operates primarily through Streamlit session state and is not a multi-user backend service.
 
 ## 2. System Architecture
@@ -64,7 +64,7 @@ flowchart TD
     H --> I[Model Evaluator]
     I --> J[Explainability]
     J --> K[Report Generator]
-    K --> L[Markdown / PDF output]
+    K --> L[Markdown output]
 ```
 
 ### 2.1 Architectural Layers
@@ -83,7 +83,7 @@ flowchart TD
 - Recommendation logic is rule-based so that every suggested pipeline can be traced back to explicit dataset characteristics and knowledge-base conditions.
 - Session state is used to pass structured workflow results between pages without requiring a separate database.
 - The report generator consumes the same workflow results that the UI shows, which keeps the final report aligned with the interactive application.
-- Optional dependencies such as `xgboost`, `shap`, and `reportlab` are treated as enhancements rather than hard requirements.
+- Optional dependencies such as `xgboost` and `shap` are treated as enhancements rather than hard requirements. `reportlab` is not part of the current report implementation.
 
 ### 2.3 Data Flow
 
@@ -95,7 +95,9 @@ flowchart LR
     Task --> KB[Knowledge Base]
     Profile --> KB
     KB --> Rec[Recommendation Engine]
-    Rec --> Builder[Pipeline Builder]
+    Rec --> Select[User selects pipeline]
+    Select --> State[selected_pipeline]
+    State --> Builder[Pipeline Builder]
     Builder --> Trainer[Model Trainer]
     Trainer --> Evaluator[Model Evaluator]
     Trainer --> Explain[Explainability]
@@ -174,8 +176,8 @@ flowchart LR
 ### 3.10 Report Generation
 
 **Input:** Profile, task, recommendation, training, evaluation, and optional explainability results.  
-**Output:** `ReportResult` with Markdown text and optional PDF bytes.  
-**Processing:** The report generator composes a structured Markdown document and optionally renders a PDF if `reportlab` is available.  
+**Output:** `ReportResult` with Markdown text; `pdf_bytes` remains unavailable in the current implementation.  
+**Processing:** The report page passes the explicitly selected recommendation from `st.session_state["selected_pipeline"]` to the report generator. The report uses that recommendation for selected-pipeline information and uses the actual fitted estimator metadata from `TrainingResult` for the trained algorithm.  
 **Design rationale:** The report step gives a thesis-friendly final artifact that mirrors the interactive workflow.
 
 ## 4. Module Documentation
@@ -523,7 +525,8 @@ Builds the final thesis-style report.
 
 - Validate that the required workflow outputs exist and are successful.
 - Compose Markdown report sections.
-- Optionally render PDF output.
+- Accept the explicitly selected recommendation when called from the interactive workflow.
+- Describe the actual fitted estimator using the training result.
 - Provide a structured `ReportResult` payload.
 
 **Public API**
@@ -543,8 +546,8 @@ Builds the final thesis-style report.
 - Limitations
 - Conclusion
 
-**PDF behavior**  
-The PDF export uses `reportlab` when available. If it is unavailable, the UI now shows a user-friendly message and keeps the Markdown report available.
+**Current report behavior**  
+The executable application generates and previews Markdown and provides a Markdown download. The `include_pdf` argument and `pdf_bytes` field remain for compatibility, but PDF generation is not implemented and no PDF download is exposed.
 
 **Testing**  
 Covered by `tests/test_report_generator.py`.
@@ -558,6 +561,7 @@ Defines shared Streamlit session-state helpers.
 
 - Initialize workflow keys.
 - Reset workflow state.
+- Invalidate downstream results when a selected or trained pipeline becomes obsolete.
 - Check workflow completion flags.
 
 **Public API**
@@ -795,7 +799,7 @@ The recommendation engine provides explicit reasoning through:
 - supporting knowledge-base rules
 - model-specific preprocessing rationale
 
-The Streamlit explainability page now reuses these existing recommendation outputs and presents them as a clean set of reasons rather than raw lists.
+The Recommendations and Explainability pages reuse these existing recommendation outputs and present them as readable reasons. The interactive report receives the selected recommendation explicitly rather than silently substituting the first-ranked candidate.
 
 ### 8.2 Model explainability
 
@@ -818,12 +822,14 @@ The current explainability page presents:
 - a short interpretation paragraph
 - a final summary explaining the two-level explainability design
 
+When Explainability is regenerated, the current training and evaluation results are preserved. The previous report and optional SHAP artifacts are invalidated because they depend on the prior explanation state.
+
 ### 8.4 Limitations
 
 - Only permutation importance is implemented in the main workflow.
 - No local explanation methods are implemented.
 - No counterfactual explanation methods are implemented.
-- SHAP is not used to produce the current results, even though the package is available for future extension.
+- Optional SHAP is manually requested for supported tree-based models. It is not part of the automatic core explanation and is not included in the Markdown report.
 
 ### 8.5 Future improvements
 
@@ -839,7 +845,7 @@ The current explainability page presents:
 
 ### 9.2 PDF generation
 
-The project attempts to generate a PDF using `reportlab` when available. If PDF generation is not available, the workflow does not fail; instead, it returns a friendly status message and keeps the Markdown export available.
+PDF generation is not implemented in the current executable application. The report generator preserves the `include_pdf` argument and `pdf_bytes` result field for compatibility, but the report page provides Markdown preview and download only.
 
 ### 9.3 Report sections and data sources
 
@@ -847,6 +853,7 @@ The project attempts to generate a PDF using `reportlab` when available. If PDF 
 | --- | --- |
 | Dataset Summary | `DatasetProfileResult` |
 | Task Detection Summary | `TaskDetectionResult` |
+| Selected Pipeline | Explicit `selected_pipeline` passed from Streamlit session state |
 | Recommended Pipelines | `PipelineRecommendationResult` |
 | Training Results | `TrainingResult` |
 | Evaluation Results | `EvaluationResult` |
@@ -854,16 +861,17 @@ The project attempts to generate a PDF using `reportlab` when available. If PDF 
 | Limitations | Static report text |
 | Conclusion | Evaluation result and workflow context |
 
+Recommendation-level report information comes from the explicitly selected `PipelineRecommendation`: its pipeline name, recommended model family, rationale, recommended preprocessing, advantages, and limitations. Actual trained-model information comes from `TrainingResult`, including the fitted estimator class, hyperparameters, training time, cross-validation results, and executed pipeline steps. Evaluation and explainability sections use their current result objects rather than recommendation metadata.
+
 ### 9.4 Report workflow
 
-1. The user completes the earlier workflow steps.
-2. The report page validates that the required results are present.
-3. The user clicks `Generate Report`.
-4. The backend produces a Markdown report and optional PDF bytes.
-5. The UI shows a preview and download buttons.
-6. The page displays a simple status message:
-   - PDF ready when bytes exist.
-   - Markdown-only notice when PDF export is unavailable.
+1. The user completes the earlier workflow steps and selects a pipeline.
+2. The report page validates the selected pipeline, built pipeline, training result, and evaluation result.
+3. The user clicks `Generate Markdown Report`.
+4. The backend receives the selected recommendation explicitly and combines it with the current training, evaluation, and explainability results.
+5. The UI shows a Markdown preview and download button.
+
+When the selected pipeline changes, built/training/evaluation/explainability/report artifacts are invalidated. Retraining clears results derived from the previous training run. Regenerating evaluation clears evaluation-dependent artifacts. Regenerating Explainability preserves evaluation and training while clearing report and SHAP artifacts.
 
 ## 10. User Interface
 
@@ -903,7 +911,7 @@ Shows the two-level explainability story: why the pipeline was selected and whic
 
 ### 10.9 Report
 
-Generates the final thesis-style report, previews the Markdown, and provides Markdown and PDF download actions.
+Generates the final thesis-style report, previews the Markdown, and provides a Markdown download action.
 
 ### 10.10 UI design notes
 
@@ -924,11 +932,10 @@ Generates the final thesis-style report, previews the Markdown, and provides Mar
 | scikit-learn | Core ML pipelines, preprocessing, metrics, permutation importance, and CV |
 | imbalanced-learn | SMOTE and imbalanced pipeline support |
 | XGBoost | Optional high-capacity estimators for tabular classification and regression |
-| SHAP | Optional dependency for future explainability extension; not the main implementation |
+| SHAP | Optional dependency for manually requested tree-model explanations; not the automatic core method |
 | Matplotlib | Charting dependency listed in requirements and available for plotting support |
 | Plotly | Charting dependency listed in requirements and available for interactive visualization support |
 | Pytest | Unit testing framework |
-| ReportLab | Optional PDF export dependency |
 | Joblib | Declared dependency for model persistence support in the project environment |
 | SciPy | Declared dependency supporting the scientific Python stack |
 | OpenPyXL | Declared dependency for spreadsheet compatibility in the project environment |
@@ -1095,14 +1102,13 @@ The knowledge base also carries its own metadata versioning in `knowledge_base/m
 | Logistic Regression baseline | Offers a simple, interpretable, and academically defensible baseline |
 | Top 5 recommendations | Balances choice diversity with readability |
 | Markdown reports | Produces a thesis-friendly artifact that is easy to inspect and export |
-| ReportLab optional PDF | Adds convenience without making PDF export a hard dependency |
 | Permutation importance | Provides a practical model explainability method without introducing heavy complexity |
 | Session-state workflow | Keeps the multi-step UI stateful without requiring a separate backend |
 | Wrapped table helper | Preserves table layout while preventing long-text truncation in Streamlit |
 
 ### Why SHAP?
 
-SHAP is listed as an optional dependency to support future explainability work. The current implementation does not depend on SHAP outputs. This is intentional: permutation importance is sufficient for the current thesis scope, while SHAP remains available if the project is extended later.
+SHAP is an optional dependency used by a manually triggered Explainability-page action for supported tree-based models. It is not part of the automatic core explainability result and is not included in the Markdown report. Permutation importance remains the primary explainability method.
 
 ## 17. Known Limitations
 
@@ -1112,7 +1118,7 @@ SHAP is listed as an optional dependency to support future explainability work. 
 - The system does not implement LIME, counterfactual explanations, PDP, ICE, or Anchors.
 - The current explainability implementation is global rather than local.
 - Models are not persisted as a formal model registry in the current workflow.
-- PDF export is optional and may be unavailable if `reportlab` is not installed.
+- Report generation currently supports Markdown only; PDF export is not implemented.
 - The system is not designed for authenticated multi-user deployment.
 - The project does not include domain-specific dataset adapters beyond CSV input.
 

@@ -13,6 +13,8 @@ Implemented improvements:
 - Updated `.github/copilot-instructions.md` so future AI-assisted changes stay aligned with the current app structure and thesis scope.
 - Verified that the full test suite still passes after the cleanup.
 - Verified that the Streamlit application still starts successfully.
+- Corrected Markdown report selection so the interactive report uses the user's selected pipeline and the actual fitted estimator identity.
+- Added targeted session-state invalidation so pipeline changes and retraining clear obsolete downstream results while Explainability regeneration preserves evaluation state.
 
 ## 2. Files Modified
 
@@ -41,6 +43,9 @@ Implemented improvements:
 - Some modules still contain long helper chains because the project intentionally exposes explicit workflow logic for teaching purposes.
 - The repository still depends on optional libraries for future extension, but they are not yet used by the current implementation.
 - A few places in the codebase could still benefit from future incremental docstring tightening, but the current level is sufficient for thesis submission.
+- The report is Markdown-only in the current executable UI; PDF generation is not implemented.
+- Optional SHAP is available from the Explainability page but is not part of the automatic core explanation and is not included in the Markdown report.
+- The automated suite provides backend unit and composed-module coverage, but no browser-level end-to-end workflow test.
 
 ## 4. Remaining Recommendations
 
@@ -50,7 +55,7 @@ The following items are sensible future refinements, but they were intentionally
 - Continue tightening docstrings if new public functions are added.
 - Add coverage reporting if the thesis process benefits from it.
 - Consider a lightweight model persistence layer only if it becomes necessary for thesis demonstrations.
-- If PDF reporting becomes a core requirement, add `reportlab` as an explicit dependency; otherwise keep the current graceful fallback behavior.
+- If PDF reporting becomes a core requirement, implement it explicitly with a dedicated dependency and tests.
 
 ## 5. Academic Readiness Assessment
 
@@ -65,7 +70,7 @@ Reasons:
 - The UI remains simple and suitable for a demonstration setting.
 - The test suite is stable and currently passes in full.
 
-Assessment: **ready for submission as a thesis prototype, with only minor optional future refinements remaining.**
+Assessment: **ready for submission as a thesis prototype, with the selected-pipeline report and stale-result issues resolved and minor optional future refinements remaining.**
 
 ## 6. Suggested Future Improvements Not Implemented
 
@@ -85,8 +90,8 @@ The repository was validated after the cleanup with:
 - `python -m pytest -v`
 - `streamlit run app/streamlit_app.py`
 
-Both checks completed successfully, and the full test suite passed with 131 tests.
+The current automated validation completed successfully with **173 passed, 1 warning**. The warning is the existing scikit-learn `UndefinedMetricWarning` from a small regression report test. No browser-level end-to-end test was run as part of this review.
 
 ## Final Note
 
-This review deliberately avoided major architectural changes and ML algorithm changes. The project remains a rule-based, explainable, beginner-friendly thesis prototype for tabular machine learning pipeline recommendation.
+This review deliberately avoided major architectural changes and ML algorithm changes. The project remains a rule-based, explainable, beginner-friendly thesis prototype for tabular machine learning pipeline recommendation. The selected-pipeline report correction and session-state invalidation were verified without changing recommendation ranking, training methodology, evaluation metrics, or explainability algorithms.
