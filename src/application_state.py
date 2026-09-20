@@ -20,6 +20,19 @@ EXPECTED_SESSION_KEYS: tuple[str, ...] = (
     "evaluation_result",
 )
 
+DOWNSTREAM_RESULT_KEYS: tuple[str, ...] = (
+    "built_pipeline_result",
+    "training_result",
+    "evaluation_result",
+    "explainability_result",
+    "report_result",
+)
+
+TRANSIENT_RESULT_KEYS: tuple[str, ...] = (
+    "report_markdown_result",
+    "shap_explanation_result",
+)
+
 
 def initialize_session_state(session_state: MutableMapping[str, Any]) -> None:
     """Initialize missing workflow keys without overwriting existing values.
@@ -42,6 +55,26 @@ def reset_workflow_state(session_state: MutableMapping[str, Any]) -> None:
     for key in EXPECTED_SESSION_KEYS:
         session_state[key] = None
 
+
+def invalidate_downstream_results(
+    session_state: MutableMapping[str, Any],
+    *,
+    include_training: bool = True,
+) -> None:
+    """Clear results that depend on the selected or newly trained pipeline."""
+
+    keys = DOWNSTREAM_RESULT_KEYS if include_training else DOWNSTREAM_RESULT_KEYS[2:]
+    for key in keys:
+        session_state[key] = None
+    for key in TRANSIENT_RESULT_KEYS:
+        session_state.pop(key, None)
+
+def invalidate_explainability_dependents(session_state: MutableMapping[str, Any]) -> None:
+    """Clear report and SHAP artifacts when explainability is regenerated."""
+
+    session_state["report_result"] = None
+    session_state.pop("report_markdown_result", None)
+    session_state.pop("shap_explanation_result", None)
 
 def has_dataset(session_state: MutableMapping[str, Any]) -> bool:
     """Return True when a dataset has been loaded."""

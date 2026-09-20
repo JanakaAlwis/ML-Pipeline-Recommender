@@ -28,8 +28,27 @@ def _workflow_results_missing() -> list[str]:
         missing_messages.append("Generate pipeline recommendations first.")
     if not has_training_result(st.session_state):
         missing_messages.append("Train a model first.")
+    if st.session_state.get("built_pipeline_result") is None:
+        missing_messages.append("Build and train the selected pipeline first.")
     if not has_evaluation_result(st.session_state):
         missing_messages.append("Evaluate the model first.")
+    if st.session_state.get("selected_pipeline") is None:
+        missing_messages.append("Select a pipeline before generating the report.")
+    built_pipeline_result = st.session_state.get("built_pipeline_result")
+    selected_pipeline = st.session_state.get("selected_pipeline")
+    if (
+        selected_pipeline is not None
+        and built_pipeline_result is not None
+        and getattr(built_pipeline_result, "pipeline_name", None) != getattr(selected_pipeline, "pipeline_name", None)
+    ):
+        missing_messages.append("Retrain the selected pipeline before generating the report.")
+    training_result = st.session_state.get("training_result")
+    if (
+        built_pipeline_result is not None
+        and training_result is not None
+        and getattr(built_pipeline_result, "model_name", None) != getattr(training_result, "model_name", None)
+    ):
+        missing_messages.append("Retrain the selected pipeline before generating the report.")
     return missing_messages
 
 
@@ -66,6 +85,7 @@ def render() -> None:
             st.session_state.get("explainability_result"),
             include_pdf=False,
             dataset_name=st.session_state.get("source_name"),
+            selected_pipeline=st.session_state.get("selected_pipeline"),
         )
         st.session_state["report_markdown_result"] = markdown_result
         st.session_state["report_result"] = markdown_result

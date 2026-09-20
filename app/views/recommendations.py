@@ -6,7 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from app.streamlit_app import render_header, render_wrapped_key_value_table, render_wrapped_table
-from src.application_state import has_profile, has_task_detection, initialize_session_state
+from src.application_state import has_profile, has_task_detection, initialize_session_state, invalidate_downstream_results
 from src.display_formatting import format_confidence
 from src.recommendation_engine import recommend_pipelines
 
@@ -174,6 +174,13 @@ def render() -> None:
         key="recommendations_selected_pipeline",
     )
     selected_pipeline = pipeline_options[selected_name]
+    previous_pipeline = st.session_state.get("selected_pipeline")
+    if previous_pipeline is not None and (
+        getattr(previous_pipeline, "pipeline_name", None) != getattr(selected_pipeline, "pipeline_name", None)
+        or getattr(previous_pipeline, "recommended_model_family", None)
+        != getattr(selected_pipeline, "recommended_model_family", None)
+    ):
+        invalidate_downstream_results(st.session_state)
     st.session_state["selected_pipeline"] = selected_pipeline
 
     summary_table = pd.DataFrame(

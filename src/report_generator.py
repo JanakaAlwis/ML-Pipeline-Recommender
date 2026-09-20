@@ -79,6 +79,7 @@ def generate_report(
     explainability_result: Any | None = None,
     include_pdf: bool = False,
     dataset_name: str | None = None,
+    selected_pipeline: Any | None = None,
 ) -> ReportResult:
     """Generate a thesis-style report from workflow results.
 
@@ -91,6 +92,7 @@ def generate_report(
         explainability_result: Optional output of the explainability step.
         include_pdf: Preserved for backward compatibility and ignored.
         dataset_name: Optional uploaded dataset name.
+        selected_pipeline: The user-selected recommendation, when available.
 
     Returns:
         A structured ReportResult containing Markdown and optional PDF output.
@@ -114,6 +116,7 @@ def generate_report(
         evaluation_result=evaluation_result,
         explainability_result=explainability_result,
         dataset_name=dataset_name,
+        selected_pipeline=selected_pipeline,
     )
     markdown_report = _build_markdown_report(report_data)
 
@@ -175,6 +178,7 @@ def _build_report_data(
     evaluation_result: Any,
     explainability_result: Any | None,
     dataset_name: str | None,
+    selected_pipeline: Any | None,
 ) -> ReportData:
     """Build the shared report data model."""
 
@@ -208,7 +212,11 @@ def _build_report_data(
         ]
     )
 
-    selected_pipeline = _build_selected_pipeline_summary(recommendation_result)
+    selected_pipeline_summary = _build_selected_pipeline_summary(
+        recommendation_result,
+        selected_pipeline=selected_pipeline,
+        training_result=training_result,
+    )
     training_summary = _build_training_summary(training_result)
     report_evaluation = _build_report_evaluation(
         profile_result=profile_result,
@@ -221,6 +229,7 @@ def _build_report_data(
         profile_result=profile_result,
         task_result=task_result,
         recommendation_result=recommendation_result,
+        selected_pipeline=selected_pipeline,
         training_result=training_result,
         evaluation_result=evaluation_result,
     )
@@ -233,7 +242,7 @@ def _build_report_data(
             ("Dataset Processing Summary", _format_key_value_lines(OrderedDict(processing_summary))),
             ("Task Detection Summary", _build_task_summary(task_result, target_variable)),
             ("Task Detection", _build_task_summary(task_result, target_variable)),
-            ("Selected Pipeline", _format_key_value_lines(OrderedDict(selected_pipeline))),
+            ("Selected Pipeline", _format_key_value_lines(OrderedDict(selected_pipeline_summary))),
             ("Training Summary", _format_key_value_lines(OrderedDict(training_summary))),
             ("Evaluation Results", _format_key_value_lines(OrderedDict(evaluation_summary))),
             ("Explainability Summary", _format_key_value_lines(OrderedDict(explainability_summary))),
@@ -259,7 +268,7 @@ def _build_report_data(
         dataset_summary=dataset_summary,
         processing_summary=processing_summary,
         task_detection=task_detection,
-        selected_pipeline=selected_pipeline,
+        selected_pipeline=selected_pipeline_summary,
         training_summary=training_summary,
         evaluation_summary=evaluation_summary,
         explainability_summary=explainability_summary,
@@ -358,22 +367,29 @@ def _build_processing_summary(profile_result: Any, training_result: Any) -> list
 
 
 
-def _build_selected_pipeline_summary(recommendation_result: Any) -> OrderedDict[str, str]:
+def _build_selected_pipeline_summary(
+    recommendation_result: Any,
+    *,
+    selected_pipeline: Any | None = None,
+    training_result: Any | None = None,
+) -> OrderedDict[str, str]:
     """Summarize the selected pipeline."""
 
-    selected_pipeline = getattr(recommendation_result, "selected_pipeline", None) or getattr(recommendation_result, "top_pipelines", [None])[0]
-    if selected_pipeline is None:
+    pipeline = selected_pipeline or getattr(recommendation_result, "selected_pipeline", None) or getattr(recommendation_result, "top_pipelines", [None])[0]
+    if pipeline is None:
         return OrderedDict([("Pipeline name", "Not available")])
 
-    preprocessing_steps = getattr(selected_pipeline, "preprocessing_steps", []) or []
+    preprocessing_steps = getattr(pipeline, "preprocessing_steps", []) or []
+    trained_model_name = getattr(training_result, "model_name", None) if training_result is not None else None
+    algorithm_name = trained_model_name or _format_model_name(getattr(pipeline, "recommended_model_family", ""))
     return OrderedDict(
         [
-            ("Pipeline name", getattr(selected_pipeline, "pipeline_name", "N/A")),
-            ("Machine learning algorithm", _format_model_name(getattr(selected_pipeline, "recommended_model_family", ""))),
+            ("Pipeline name", getattr(pipeline, "pipeline_name", "N/A")),
+            ("Machine learning algorithm", algorithm_name or "Not available"),
             ("Preprocessing pipeline", ", ".join(preprocessing_steps) or "Not specified"),
-            ("Why recommended", getattr(selected_pipeline, "explanation", "N/A")),
-            ("Advantages", ", ".join(getattr(selected_pipeline, "advantages", []) or []) or "Not specified"),
-            ("Limitations", ", ".join(getattr(selected_pipeline, "limitations", []) or []) or "Not specified"),
+            ("Why recommended", getattr(pipeline, "explanation", "N/A")),
+            ("Advantages", ", ".join(getattr(pipeline, "advantages", []) or []) or "Not specified"),
+            ("Limitations", ", ".join(getattr(pipeline, "limitations", []) or []) or "Not specified"),
         ]
     )
 
@@ -569,15 +585,18 @@ def _build_overall_summary(
     profile_result: Any,
     task_result: Any,
     recommendation_result: Any,
+    selected_pipeline: Any | None,
     training_result: Any,
     evaluation_result: Any,
 ) -> str:
     """Generate a concise overall summary paragraph."""
 
     task_type = str(getattr(task_result, "task_type", "unknown") or "unknown")
-    selected_pipeline = getattr(recommendation_result, "selected_pipeline", None) or getattr(recommendation_result, "top_pipelines", [None])[0]
-    pipeline_name = getattr(selected_pipeline, "pipeline_name", "the selected pipeline") if selected_pipeline is not None else "the selected pipeline"
-    model_name = _format_model_name(getattr(selected_pipeline, "recommended_model_family", "")) if selected_pipeline is not None else "the trained model"
+    pipeline = selected_pipeline or getattr(recommendation_result, "selected_pipeline", None) or getattr(recommendation_result, "top_pipelines", [None])[0]
+    pipeline_name = getattr(pipeline, "pipeline_name", "the selected pipeline") if pipeline is not None else "the selected pipeline"
+    model_name = getattr(training_result, "model_name", None) if getattr(training_result, "model_name", None) else (
+        _format_model_name(getattr(pipeline, "recommended_model_family", "")) if pipeline is not None else "the trained model"
+    )
     eval_summary = getattr(evaluation_result, "quality_summary", "") or ""
     top_features = getattr(getattr(training_result, "trained_pipeline", None), "steps", [])
 

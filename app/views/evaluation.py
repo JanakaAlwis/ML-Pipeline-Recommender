@@ -11,7 +11,7 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 from sklearn.model_selection import train_test_split
 
 from app.streamlit_app import render_header, render_wrapped_key_value_table, render_wrapped_table
-from src.application_state import has_dataset, has_task_detection, has_training_result, initialize_session_state
+from src.application_state import has_dataset, has_task_detection, has_training_result, initialize_session_state, invalidate_downstream_results
 from src.display_formatting import format_count, format_cv_score, format_metric
 from src.model_evaluator import evaluate_model
 
@@ -398,6 +398,7 @@ def render() -> None:
     st.write("Evaluate the trained pipeline.")
 
     if st.button("Evaluate Model"):
+        invalidate_downstream_results(st.session_state, include_training=False)
         evaluation_result = evaluate_model(
             st.session_state["training_result"],
             st.session_state["dataframe"],

@@ -10,6 +10,8 @@ from src.application_state import (
     has_recommendations,
     has_task_detection,
     has_training_result,
+    invalidate_downstream_results,
+    invalidate_explainability_dependents,
     initialize_session_state,
     reset_workflow_state,
 )
@@ -91,3 +93,84 @@ def test_helper_functions_return_expected_booleans() -> None:
     assert has_recommendations(session_state) is True
     assert has_training_result(session_state) is True
     assert has_evaluation_result(session_state) is True
+
+
+def test_invalidate_downstream_results_preserves_upstream_state() -> None:
+    """Invalidation should clear dependent artifacts without clearing workflow inputs."""
+
+    session_state: dict[str, object] = {
+        "dataframe": "data",
+        "profile_result": "profile",
+        "task_result": "task",
+        "recommendation_result": "recommendations",
+        "selected_pipeline": "selected",
+        "built_pipeline_result": "built",
+        "training_result": "training",
+        "evaluation_result": "evaluation",
+        "explainability_result": "explainability",
+        "report_result": "report",
+        "report_markdown_result": "markdown",
+        "shap_explanation_result": "shap",
+    }
+
+    invalidate_downstream_results(session_state)
+
+    assert session_state["dataframe"] == "data"
+    assert session_state["profile_result"] == "profile"
+    assert session_state["task_result"] == "task"
+    assert session_state["recommendation_result"] == "recommendations"
+    assert session_state["selected_pipeline"] == "selected"
+    assert session_state["built_pipeline_result"] is None
+    assert session_state["training_result"] is None
+    assert session_state["evaluation_result"] is None
+    assert session_state["explainability_result"] is None
+    assert session_state["report_result"] is None
+    assert "report_markdown_result" not in session_state
+    assert "shap_explanation_result" not in session_state
+
+
+def test_invalidate_downstream_results_without_training_preserves_training() -> None:
+    """Evaluation/explainability regeneration should preserve the current training result."""
+
+    session_state: dict[str, object] = {
+        "training_result": "training",
+        "evaluation_result": "evaluation",
+        "explainability_result": "explainability",
+        "report_result": "report",
+        "report_markdown_result": "markdown",
+        "shap_explanation_result": "shap",
+    }
+
+    invalidate_downstream_results(session_state, include_training=False)
+
+    assert session_state["training_result"] == "training"
+    assert session_state["evaluation_result"] is None
+    assert session_state["explainability_result"] is None
+    assert session_state["report_result"] is None
+    assert "report_markdown_result" not in session_state
+    assert "shap_explanation_result" not in session_state
+
+def test_invalidate_explainability_dependents_preserves_evaluation() -> None:
+    """Explainability regeneration should preserve evaluation and training results."""
+
+    session_state: dict[str, object] = {
+        "selected_pipeline": "selected",
+        "built_pipeline_result": "built",
+        "training_result": "training",
+        "evaluation_result": "evaluation",
+        "explainability_result": "old explainability",
+        "report_result": "report",
+        "report_markdown_result": "markdown",
+        "shap_explanation_result": "old shap",
+    }
+
+    invalidate_explainability_dependents(session_state)
+
+    assert session_state["selected_pipeline"] == "selected"
+    assert session_state["built_pipeline_result"] == "built"
+    assert session_state["training_result"] == "training"
+    assert session_state["evaluation_result"] == "evaluation"
+    assert session_state["explainability_result"] == "old explainability"
+    assert session_state["report_result"] is None
+    assert "report_markdown_result" not in session_state
+    assert "shap_explanation_result" not in session_state

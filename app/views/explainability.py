@@ -13,6 +13,8 @@ from src.application_state import (
     has_recommendations,
     has_task_detection,
     has_training_result,
+    invalidate_downstream_results,
+    invalidate_explainability_dependents,
     initialize_session_state,
 )
 from src.display_formatting import format_cv_score, format_metric
@@ -314,6 +316,7 @@ def render() -> None:
     st.write("Generate the explanation for the trained model.")
 
     if st.button("Generate Explainability"):
+        invalidate_explainability_dependents(st.session_state)
         explainability_result = explain_model(
             training_result,
             st.session_state["dataframe"],

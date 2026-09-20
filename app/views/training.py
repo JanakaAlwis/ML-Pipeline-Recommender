@@ -8,7 +8,7 @@ import pandas as pd
 import streamlit as st
 
 from app.streamlit_app import render_header, render_wrapped_key_value_table, render_wrapped_table
-from src.application_state import has_dataset, has_profile, has_task_detection, initialize_session_state
+from src.application_state import has_dataset, has_profile, has_task_detection, initialize_session_state, invalidate_downstream_results
 from src.display_formatting import format_count, format_cv_score, format_metric
 from src.model_trainer import train_pipeline
 from src.pipeline_builder import build_pipeline
@@ -158,6 +158,7 @@ def render() -> None:
     st.write("Train the selected pipeline.")
 
     if st.button("Train Selected Pipeline"):
+        invalidate_downstream_results(st.session_state)
         built_pipeline_result = build_pipeline(
             st.session_state["selected_pipeline"],
             st.session_state["profile_result"],

@@ -248,6 +248,40 @@ def test_successful_markdown_report_generation() -> None:
     assert "Target column: target" in result.markdown_report
 
 
+def test_markdown_report_uses_explicit_non_first_selected_pipeline() -> None:
+    """The report should describe the selected non-first pipeline and fitted model."""
+
+    profile_result, task_result, recommendation_result, _, _, _ = _trained_workflow_results(include_explainability=False)
+    first_pipeline = recommendation_result.top_pipelines[0]
+    selected_pipeline = next(
+        pipeline
+        for pipeline in recommendation_result.top_pipelines[1:]
+        if pipeline.recommended_model_family != first_pipeline.recommended_model_family
+    )
+    dataframe = _workflow_data()
+    built_pipeline = build_pipeline(selected_pipeline, profile_result, task_result)
+    training_result = train_pipeline(built_pipeline, dataframe, "target", task_result.task_type, run_cross_validation=False)
+    evaluation_result = evaluate_model(training_result, dataframe, "target", task_result.task_type)
+
+    result = generate_report(
+        profile_result,
+        task_result,
+        recommendation_result,
+        training_result,
+        evaluation_result,
+        explainability_result=None,
+        include_pdf=False,
+        selected_pipeline=selected_pipeline,
+    )
+
+    assert result.success is True
+    assert result.markdown_report is not None
+    assert f"Pipeline name:** {selected_pipeline.pipeline_name}" in result.markdown_report
+    assert f"Machine learning algorithm:** {training_result.model_name}" in result.markdown_report
+    assert f"Pipeline name:** {first_pipeline.pipeline_name}" not in result.markdown_report
+    assert f"through {selected_pipeline.pipeline_name}" in result.markdown_report
+
+
 def test_classification_report_generation_with_missing_target_values() -> None:
     """Report generation should succeed when the classification target had missing values."""
 
