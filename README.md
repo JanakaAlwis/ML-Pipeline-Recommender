@@ -1,94 +1,104 @@
-# ML Pipeline Recommender
+# Design and Implementation of an Explainable Machine Learning Pipeline Recommendation System for Structured Tabular Data
 
-Bachelor's thesis prototype for explainable machine learning pipeline recommendation on tabular datasets.
+This project is a thesis prototype for a knowledge-based machine learning pipeline recommendation system for structured tabular data. The application guides a user from dataset upload through profiling, task detection, pipeline recommendation, training, evaluation, explainability, and final report generation in a single Streamlit workflow.
 
-## Project Title
+[Installation and Local Setup](INSTALLATION.md)
 
-Design and Implementation of an Explainable Machine Learning Pipeline Recommendation System for Tabular Datasets
+## Overview
 
-## Purpose
+The system is designed for tabular CSV datasets where the user needs a transparent and explainable starting point for supervised learning tasks. Instead of treating pipeline selection as a black box, the project makes the recommendation process explicit: it profiles the dataset, identifies the learning task, matches dataset characteristics against a declarative knowledge base, and then builds a concrete pipeline for the selected recommendation.
 
-This system analyzes structured CSV datasets, recommends suitable machine learning pipelines, trains the selected pipeline, evaluates performance, explains the result, and generates a final report.
+The practical goal is not to guarantee an optimal pipeline or to claim superiority over AutoML systems. It is to provide a beginner-friendly, traceable workflow that supports academic discussion, transparent decision making, and reproducible experimentation on structured data.
 
-## Core Capabilities
+## Main Capabilities
 
-- CSV upload and validation
-- Dataset profiling
-- Task detection
-- Knowledge-base-driven pipeline recommendation
-- Pipeline construction and training
-- Model evaluation
-- Feature-importance explainability
-- Markdown and optional PDF reporting
-- Streamlit workflow navigation
+The current implementation verifies the following workflow capabilities:
 
-## Installation
+- CSV upload and dataset loading
+- Dataset profiling and summary statistics
+- Feature assessment before model training
+- Classification and regression task detection
+- Knowledge-based pipeline recommendation for structured tabular data
+- Pipeline construction, selection, and training
+- Evaluation metrics for classification and regression
+- Model explainability using permutation importance
+- Optional SHAP explanations for supported tree-based models
+- Final Markdown report generation
 
-1. Create or activate the Python environment used by the project.
-2. Install the dependencies:
+## Explainability and Feature Assessment
 
-```bash
-pip install -r requirements.txt
-```
+Explainability is a central design goal of the project.
 
-## Usage
+The workflow includes:
 
-Run the application with:
+- a pre-modeling feature assessment step that highlights features that may need review,
+- recommendation explanations that describe why a pipeline was selected,
+- permutation importance after training to assess the most influential features,
+- optional SHAP output for supported tree-based models when the model type permits it.
 
-```bash
-streamlit run app/streamlit_app.py
-```
+Important detail: feature assessment flags suspicious or weakly suitable features for review, but the implementation does not automatically remove or exclude them from the model. Flagged features remain visible in the assessment output and are only treated as review signals unless a later implementation step explicitly modifies the data or pipeline.
 
-The workflow is session-state driven. Complete the pages in order:
+## Application Workflow
 
-1. Upload Dataset
-2. Dataset Profile
-3. Task Detection
-4. Recommendations
-5. Training
-6. Evaluation
-7. Explainability
-8. Report
+The actual user journey in the application is:
 
-## Workflow
+1. Upload a CSV dataset.
+2. Review the dataset profile and quality indicators.
+3. Select the target column and detect the task type.
+4. View ranked pipeline recommendations.
+5. Choose a recommended pipeline and train it.
+6. Evaluate the trained model on the hold-out split.
+7. Review explainability outputs and feature importance.
+8. Generate the final Markdown report.
 
-The application follows a guided supervised-learning workflow for tabular data:
+The app is implemented as a guided Streamlit workflow and is intended for thesis demonstration and research-oriented experimentation rather than production deployment.
 
-Upload Dataset → Dataset Profile → Task Detection → Recommendation Engine → Pipeline Builder → Model Training → Model Evaluation → Explainability → Report
+## Thesis Evaluation Summary
 
-## Project Structure
+The project documentation and implementation evidence support the following evaluation context:
 
-- `app/` - Streamlit shell and page views
-- `src/` - machine learning, knowledge base, explainability, and reporting modules
-- `knowledge_base/` - declarative recommendation rules and archetypes
-- `tests/` - pytest suite
-- `docs/` - thesis reference material and planning artifacts
-- `docs/DEVELOPMENT_GUIDELINES.md` - general project development guidelines
-- `reference/` - previous assignment notebooks and datasets used for context
-- `models/` - generated model artifacts
-- `outputs/` - generated reports and outputs
+- The system was evaluated on six tabular datasets as part of the thesis workflow review.
+- The recommendation process was exercised through 30 pipeline recommendation executions in the evaluation workflow.
+- The current automated test evidence for the repository is 173 passing tests, with one existing scikit-learn warning from a regression report test.
 
-## Testing
+This repository does not claim a formal browser-level end-to-end UI test suite, a large-scale user study, or a production benchmark against external AutoML systems.
 
-Run the test suite with:
+## Known Limitations
 
-```bash
-python -m pytest -v
-```
+The current implementation is intentionally limited and transparent about these constraints:
 
-Current validation status:
+- Recommendation logic is rule-based and knowledge-base-driven rather than learned from historical performance data.
+- Recommendation consistency depends on the current declarative rules and dataset characteristics; it is not a general-purpose optimization engine.
+- Feature assessment can flag features that may be unsuitable, but the system does not automatically enforce exclusion unless a later step explicitly does so.
+- Explanation quality is constrained by the current methods: the primary workflow relies on permutation importance, with optional SHAP only for supported models.
+- Evaluation is designed for the project’s thesis context and uses project-defined heuristics rather than a universally accepted benchmark standard.
+- The executable report flow is Markdown-based; PDF export is not implemented in the current application.
 
-- `131` tests passing
-- `streamlit run app/streamlit_app.py` verified successfully
+## Future Development
 
-## Screenshots
+The following directions are realistic future improvements, but they are not presented as current functionality:
 
-Add thesis screenshots here after the final UI review.
+- expanding the rule base and pipeline archetypes,
+- improving recommendation consistency across more dataset types,
+- adding deeper explainability methods and richer reporting,
+- improving model persistence and experiment tracking,
+- extending the application for broader deployment or demonstration scenarios.
 
-## Future Work
+## Repository Layout
 
-- Broaden the knowledge base with additional archetypes and rules.
-- Add model persistence and experiment tracking.
-- Add optional SHAP-based explanations.
-- Add richer PDF formatting for the final report.
-- Add deployment guidance for thesis demonstration environments.
+- app/ — Streamlit application shell and workflow pages
+- src/ — recommendation, preprocessing, training, evaluation, explainability, and reporting logic
+- tests/ — automated validation for the core workflow components
+- docs/ — thesis-related project documentation and planning materials
+- reference/ — prior notebooks and supporting datasets
+- models/ — generated model artifacts when produced by the workflow
+- outputs/ — generated reports and other workflow outputs
+
+## Validation and Scope
+
+This repository is a thesis prototype and demonstration application for explainable machine learning pipeline recommendation on structured tabular data. It is designed to support transparent, academic evaluation and workflow explanation rather than serving as a production-grade platform.
+
+## Related Documentation
+
+- [Installation and Local Setup](INSTALLATION.md)
+- [docs/DEVELOPMENT_GUIDELINES.md](docs/DEVELOPMENT_GUIDELINES.md)
